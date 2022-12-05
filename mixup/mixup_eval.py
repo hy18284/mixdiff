@@ -94,39 +94,48 @@ if __name__ == '__main__':
                     given_images, 
                     **image_kwargs
                 )
-                # (N, M, C, H, W) -> (N, N, M, C, H, W)
-                chosen_images = chosen_images.expand(N, -1, -1, -1, -1, -1)
-                # (N, N, M, C, H, W) -> (M, N, N, C, H, W)
-                chosen_images = chosen_images.permute(2, 1, 0, 3, 4, 5)
 
-                # (N, C, H, W) -> (M, N, N, C, H, W)
-                images_m = images.expand(M, N, -1, -1, -1, -1)
+                def calculate_known_logits(chosen_images, images):
+                    # (N, M, C, H, W) -> (N, N, M, C, H, W)
+                    chosen_images = chosen_images.expand(N, -1, -1, -1, -1, -1)
+                    # (N, N, M, C, H, W) -> (M, N, N, C, H, W)
+                    chosen_images = chosen_images.permute(2, 1, 0, 3, 4, 5)
 
-                # (M, N, N, C, H, W, 1) * (R) -> (M, N, N, C, H, W, R)
-                chosen_images = chosen_images.unsqueeze(-1) * rates 
-                images_m = images_m.unsqueeze(-1) * (1 - rates)
-                known_mixup = chosen_images + images_m
-                known_mixup = known_mixup.permute(0, 1, 2, 6, 3, 4, 5)
-                known_mixup = known_mixup.reshape(M * N * N * R, C, H, W)
+                    # (N, C, H, W) -> (M, N, N, C, H, W)
+                    images_m = images.expand(M, N, -1, -1, -1, -1)
 
-                known_logits = score_calculator.process_mixup_images(known_mixup)
+                    # (M, N, N, C, H, W, 1) * (R) -> (M, N, N, C, H, W, R)
+                    chosen_images = chosen_images.unsqueeze(-1) * rates 
+                    images_m = images_m.unsqueeze(-1) * (1 - rates)
+                    known_mixup = chosen_images + images_m
+                    known_mixup = known_mixup.permute(0, 1, 2, 6, 3, 4, 5)
+                    known_mixup = known_mixup.reshape(M * N * N * R, C, H, W)
 
-                NS = known_logits.size(-1)
-                # (M * N * N * R, NS) -> (M, N, N, R, NS)
-                known_logits = known_logits.view(M, N, N, R, -1)
-                # (M, N, N, R, NS) -> (N, N, R, NS)
-                known_logits = torch.mean(known_logits, dim=0)
-                known_logits = known_logits.view(-1, NS)
+                    known_logits = score_calculator.process_mixup_images(known_mixup)
 
-                # (N, C, H, W) -> (N, N, C, H, W) -> (N, N, C, H, W, R)
-                images_n_1 = images.expand(N, -1, -1, -1, -1)
-                images_n_1 = images_n_1.permute(1, 0, 2, 3, 4).unsqueeze(-1) * rates
-                images_n_2 = images.expand(N, -1, -1, -1, -1).unsqueeze(-1) * (1 - rates)
-                # (N, C, H, W) -> (M, N, C, H, W)
-                unknown_mixup = images_n_1 + images_n_2
-                unknown_mixup = unknown_mixup.permute(0, 1, 5, 2, 3, 4)
-                unknown_mixup = unknown_mixup.reshape(N * N * R, C, H, W)
-                unknown_logits = score_calculator.process_mixup_images(unknown_mixup)
+                    NS = known_logits.size(-1)
+                    # (M * N * N * R, NS) -> (M, N, N, R, NS)
+                    known_logits = known_logits.view(M, N, N, R, -1)
+                    # (M, N, N, R, NS) -> (N, N, R, NS)
+                    known_logits = torch.mean(known_logits, dim=0)
+                    known_logits = known_logits.view(-1, NS)
+                    return known_logits
+                
+                known_logits = calculate_known_logits(chosen_images, images)
+
+                def calculate_unknown_logits(images):
+                    # (N, C, H, W) -> (N, N, C, H, W) -> (N, N, C, H, W, R)
+                    images_n_1 = images.expand(N, -1, -1, -1, -1)
+                    images_n_1 = images_n_1.permute(1, 0, 2, 3, 4).unsqueeze(-1) * rates
+                    images_n_2 = images.expand(N, -1, -1, -1, -1).unsqueeze(-1) * (1 - rates)
+                    # (N, C, H, W) -> (M, N, C, H, W)
+                    unknown_mixup = images_n_1 + images_n_2
+                    unknown_mixup = unknown_mixup.permute(0, 1, 5, 2, 3, 4)
+                    unknown_mixup = unknown_mixup.reshape(N * N * R, C, H, W)
+                    unknown_logits = score_calculator.process_mixup_images(unknown_mixup)
+                    return unknown_logits
+
+                unknown_logits = calculate_unknown_logits(images)
                 
                 dists = score_calculator.calculate_diff(known_logits, unknown_logits)
 
@@ -138,6 +147,7 @@ if __name__ == '__main__':
                 mask = torch.ones_like(dists)
                 mask.fill_diagonal_(0.0)
                 dists = dists * mask
+
                 if args.top_1:
                     abs_dists = torch.abs(dists)
                     abs_max_idx = torch.argmax(abs_dists, dim=-1)
@@ -153,7 +163,7 @@ if __name__ == '__main__':
             
             targets += [int(label not in seen_idx) for label in labels]
             scores += dists.tolist()
-
+            
         score_calculator.on_eval_end()
 
         ood_scores = [score for score, target in zip(scores, targets) if target == 1]
