@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 import torchvision
 import time
+import wandb
 
 def tokenize_for_clip(batch_sentences, tokenizer):
     default_length = 77  # CLIP default
@@ -64,29 +65,29 @@ def image_decoder(clip_model, berttokenizer, device, split, image_loaders=None):
         for idx, image in enumerate(tqdm(loader)):
             with torch.no_grad():
                 clip_out = clip_model.encode_image(image.to(device)).float()
-            clip_extended_embed = clip_out.repeat(1, 2).type(torch.FloatTensor)
+                clip_extended_embed = clip_out.repeat(1, 2).type(torch.FloatTensor)
 
-            #greedy generation
-            target_list, topk_list = greedysearch_generation_topk(clip_extended_embed)
+                #greedy generation
+                target_list, topk_list = greedysearch_generation_topk(clip_extended_embed)
 
-            target_tokens = [berttokenizer.decode(int(pred_idx.cpu().numpy())) for pred_idx in target_list]
-            topk_tokens = [berttokenizer.decode(int(pred_idx.cpu().numpy())) for pred_idx in topk_list]
+                target_tokens = [berttokenizer.decode(int(pred_idx.cpu().numpy())) for pred_idx in target_list]
+                topk_tokens = [berttokenizer.decode(int(pred_idx.cpu().numpy())) for pred_idx in topk_list]
 
-            unique_entities = list(set(topk_tokens) - set(seen_labels))
-            if len(unique_entities) > max_num_entities:
-                max_num_entities = len(unique_entities)
-            all_desc = seen_descriptions + [f"This is a photo of a {label}" for label in unique_entities]
-            all_desc_ids = tokenize_for_clip(all_desc, cliptokenizer)
+                unique_entities = list(set(topk_tokens) - set(seen_labels))
+                if len(unique_entities) > max_num_entities:
+                    max_num_entities = len(unique_entities)
+                all_desc = seen_descriptions + [f"This is a photo of a {label}" for label in unique_entities]
+                all_desc_ids = tokenize_for_clip(all_desc, cliptokenizer)
 
-            image_feature = clip_model.encode_image(image.cuda()).float()
-            image_feature /= image_feature.norm(dim=-1, keepdim=True)
-            text_features = clip_model.encode_text(all_desc_ids.cuda()).float()
-            text_features /= text_features.norm(dim=-1, keepdim=True)
-            zeroshot_probs = (100.0 * image_feature @ text_features.T).softmax(dim=-1).squeeze()
+                image_feature = clip_model.encode_image(image.cuda()).float()
+                image_feature /= image_feature.norm(dim=-1, keepdim=True)
+                text_features = clip_model.encode_text(all_desc_ids.cuda()).float()
+                text_features /= text_features.norm(dim=-1, keepdim=True)
+                zeroshot_probs = (100.0 * image_feature @ text_features.T).softmax(dim=-1).squeeze()
 
-            #detection score is accumulative sum of probs of generated entities
-            ood_prob_sum = np.sum(zeroshot_probs[20:].detach().cpu().numpy())
-            ood_probs_sum.append(ood_prob_sum)
+                #detection score is accumulative sum of probs of generated entities
+                ood_prob_sum = np.sum(zeroshot_probs[20:].detach().cpu().numpy())
+                ood_probs_sum.append(ood_prob_sum)
         end_time=time.time()
     auc_sum = roc_auc_score(np.array(targets), np.squeeze(ood_probs_sum))
     print('sum_ood AUROC={}'.format(auc_sum))
@@ -98,6 +99,12 @@ if __name__ == '__main__':
     parser.add_argument('--trained_path', type=str, default='./trained_models/COCO/')
     args = parser.parse_args()
 
+    wandb.init(
+        config=args,
+        name='zoc_cifar100',
+        project='ZOC',
+    )
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.saved_model_path = args.trained_path + '/ViT-B32/'
 
@@ -107,14 +114,14 @@ if __name__ == '__main__':
     # initialize tokenizers for clip and bert, these two use different tokenizers
     berttokenizer = BertGenerationTokenizer.from_pretrained('google/bert_for_seq_generation_L-24_bbc_encoder')
 
-    clip_model = torch.jit.load(os.path.join('./trained_models', "{}.pt".format('ViT-B-32'))).to(device).eval()
+    clip_model = torch.jit.load(os.path.join('./trained_models/ViT-B32', "{}.pt".format('ViT-B32'))).to(device).eval()
     cliptokenizer = clip_tokenizer()
 
     bert_config = BertGenerationConfig.from_pretrained("google/bert_for_seq_generation_L-24_bbc_encoder")
     bert_config.is_decoder=True
     bert_config.add_cross_attention=True
     bert_model = BertGenerationDecoder.from_pretrained('google/bert_for_seq_generation_L-24_bbc_encoder', config=bert_config).to(device).train()
-    bert_model.load_state_dict(torch.load(args.saved_model_path + 'model.pt')['net'])
+    bert_model.load_state_dict(torch.load(args.saved_model_path + 'model.pt', map_location=device)['net'])
 
     cifar100_loaders = cifar100_single_isolated_class_loader()
     dset = torchvision.datasets.CIFAR100(root='./data/', train=False, download=True)
@@ -129,5 +136,11 @@ if __name__ == '__main__':
         print(label_split)
         auc = image_decoder(clip_model, berttokenizer, device, label_split, image_loaders=cifar100_loaders)
         auc_list.append(auc)
+
+        wandb.log({'auroc': auc})
+
     print(auc_list)
     print('mean AUC={}'.format(np.mean(auc_list)), ' std={}'.format(np.std(auc_list)))
+    avg_auroc = np.mean(auc_list)
+    auroc_std = np.std(auc_list)
+    wandb.log({'avg_auroc': avg_auroc, 'auroc_std': auroc_std})

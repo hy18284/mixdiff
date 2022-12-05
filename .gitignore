@@ -1,3 +1,6 @@
 /wandb
 /data
-__pycache__/*
+*/__pycache__/*
+*.pyc
+/results
+/trained_models

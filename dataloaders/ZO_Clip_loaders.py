@@ -9,7 +9,7 @@ import glob
 
 
 class cifar10_isolated_class(Dataset):
-    def __init__(self, class_label=None):
+    def __init__(self, class_label=None, train=False):
         assert class_label, 'a semantic label should be specified'
         super(cifar10_isolated_class, self).__init__()
         self.transform = Compose([
@@ -19,7 +19,7 @@ class cifar10_isolated_class(Dataset):
             ToTensor(),
             Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
         ])
-        cifar10 = CIFAR10(root='./data', train=False, download=True)
+        cifar10 = CIFAR10(root='./data', train=train, download=True)
 
         class_mask = np.array(cifar10.targets) == cifar10.class_to_idx[class_label]
         self.data = cifar10.data[class_mask]
@@ -32,7 +32,7 @@ class cifar10_isolated_class(Dataset):
         return self.transform(self.data[index])
 
 
-def cifar10_single_isolated_class_loader():
+def cifar10_single_isolated_class_loader(train=False):
     splits = [[0, 1, 9, 7, 3, 2],
               [0, 2, 4, 3, 7, 5],
               [5, 1, 9, 8, 7, 0],
@@ -42,14 +42,14 @@ def cifar10_single_isolated_class_loader():
     cifar10_labels = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
     #cifar10_labels = ['automobile', 'ship']
     for label in cifar10_labels:
-       dataset = cifar10_isolated_class(label)
+       dataset = cifar10_isolated_class(label, train=False)
        loader = DataLoader(dataset=dataset, batch_size=1, num_workers=4)
        loaders_dict[label] = loader
     return loaders_dict
 
 
 class cifar100_isolated_class(Dataset):
-    def __init__(self, class_label=None):
+    def __init__(self, class_label=None, train=False):
         assert class_label, 'a semantic label should be specified'
         super(cifar100_isolated_class, self).__init__()
         superclass_list =  [['aquatic mammals',	'beaver', 'dolphin', 'otter', 'seal', 'whale'],
@@ -85,7 +85,7 @@ class cifar100_isolated_class(Dataset):
             ToTensor(),
             Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
         ])
-        cifar100 = CIFAR100(root='./data', train=False, download=True)
+        cifar100 = CIFAR100(root='./data', train=train, download=True)
 
         self.coarse_label = fine_to_coarse_dict[class_label]
 
@@ -100,7 +100,7 @@ class cifar100_isolated_class(Dataset):
         return self.transform(self.data[index])
 
 
-def cifar100_single_isolated_class_loader():
+def cifar100_single_isolated_class_loader(train: bool = False):
     loaders_dict = {}
     cifar100_labels = ['beaver', 'dolphin', 'otter', 'seal', 'whale',
                            'aquarium_fish', 'flatfish', 'ray', 'shark', 'trout',
@@ -123,7 +123,7 @@ def cifar100_single_isolated_class_loader():
                            'bicycle', 'bus', 'motorcycle', 'pickup_truck', 'train',
                            'lawn_mower', 'rocket', 'streetcar', 'tank', 'tractor']
     for label in cifar100_labels:
-       dataset = cifar100_isolated_class(label)
+       dataset = cifar100_isolated_class(label, train)
        loader = DataLoader(dataset=dataset, batch_size=1, num_workers=4)
        loaders_dict[label] = loader
     return loaders_dict
@@ -209,10 +209,13 @@ def tinyimage_semantic_spit_generator():
 
 
 class tinyimage_isolated_class(Dataset):
-    def __init__(self, label, mappings):
+    def __init__(self, label, mappings, train: bool = False):
         assert label, 'a semantic label should be specified'
         super(tinyimage_isolated_class, self).__init__()
-        path = './data/tiny-imagenet-200/val/'
+        if train:
+            path = './data/tiny-imagenet-200/train/'
+        else:
+            path = './data/tiny-imagenet-200/val/'
         #path = '/Users/Sepid/data/tiny-imagenet-200/val/'
         self.image_paths = glob.glob(os.path.join(path, mappings[label], '*.JPEG'))
         self.transform = Compose([
@@ -232,7 +235,7 @@ class tinyimage_isolated_class(Dataset):
         return x
 
 
-def tinyimage_single_isolated_class_loader():
+def tinyimage_single_isolated_class_loader(train: bool = False):
     semantic_splits = tinyimage_semantic_spit_generator()
     f = open('./dataloaders/tinyimagenet_labels_to_ids.txt', 'r')
     #f = open('../tinyimagenet_ids_to_label.txt', 'r')
@@ -244,7 +247,11 @@ def tinyimage_single_isolated_class_loader():
 
     loaders_dict = {}
     for semantic_label in mappings_dict.keys():
-        dataset = tinyimage_isolated_class(semantic_label, mappings_dict)
+        dataset = tinyimage_isolated_class(
+            semantic_label, 
+            mappings_dict, 
+            train=train
+        )
         loader = DataLoader(dataset=dataset, batch_size=1, num_workers=4)
         loaders_dict[semantic_label] = loader
     return semantic_splits, loaders_dict

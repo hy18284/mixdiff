@@ -2,12 +2,14 @@ from torch.utils.data import DataLoader, TensorDataset
 import torch
 import numpy as np
 import os
+from pathlib import Path
 from torchvision.datasets import CocoDetection
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 from PIL import Image
 from tqdm import tqdm
 from transformers import BertGenerationTokenizer
 import copy
+import clip
 
 
 class my_coco_detetction():
@@ -48,14 +50,34 @@ class my_coco_detetction():
         return img, cap_list
 
 
-def get_clip_image_features(coco_dataset, split, clip_backbone, device):
-    clip_model = torch.jit.load(os.path.join('./trained_models', "{}.pt".format(clip_backbone))).to(device).eval()
-    if os.path.isfile('./dataloaders/processed_coco/{}/5xCaptions/full_coco_clip_features_{}.npy'.format(clip_backbone, split)):
-        with open('./dataloaders/processed_coco/{}/5xCaptions/full_coco_clip_features_{}.npy'.format(clip_backbone, split), 'rb') as e:
+def get_clip_image_features(coco_dataset, split, clip_backbone, device, batch_size):
+    # clip_model = torch.jit.load(os.path.join('./trained_models', "{}.pt".format(clip_backbone))).to(device).eval()
+    clip_model, _ = clip.load(
+        name=clip_backbone, 
+        device='cpu', 
+        download_root=os.path.join('./trained_models', clip_backbone.replace("/", "")),
+    )
+    clip_model.to(device).eval()
+
+
+    file_path = './dataloaders/processed_coco/{}/5xCaptions/full_coco_clip_features_{}.npy'.format(
+        clip_backbone.replace('/', ''), 
+        split,
+    )
+    Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+
+    if os.path.isfile(file_path):
+        with open(file_path, 'rb') as e:
             clip_out_all = np.load(e, allow_pickle=True)
     else:
         print('calculating all clip image encoder features')
-        loader = DataLoader(dataset=coco_dataset, batch_size=128, shuffle=False, collate_fn=collate_fn)
+        loader = DataLoader(
+            dataset=coco_dataset, 
+            batch_size=batch_size, 
+            shuffle=False, 
+            collate_fn=collate_fn,
+            num_workers=4,
+        )
         clip_out_all = []
         with torch.no_grad():
             for i, (images, annot) in enumerate(tqdm(loader)):
@@ -64,7 +86,7 @@ def get_clip_image_features(coco_dataset, split, clip_backbone, device):
                 clip_out = clip_model.encode_image(images.to(device))
                 clip_out_all.append(clip_out.cpu().numpy())
             clip_out_all = np.concatenate(clip_out_all)
-        with open('./dataloaders/processed_coco/{}/5xCaptions/full_coco_clip_features_{}.npy'.format(clip_backbone, split), 'wb') as e:
+        with open(file_path, 'wb') as e:
             np.save(e, clip_out_all, allow_pickle=True)
 
     return clip_out_all
@@ -106,15 +128,21 @@ def collate_fn(batch):
     return tuple(zip(*batch))
 
 
-def get_loader(train, clip_backbone):
+def get_loader(train, clip_backbone, device, feat_batch_size, batch_size):
     if train:
         split='train'
     else:
         split='val'
 
     coco_dataset = my_coco_detetction(train)
-    clip_features = get_clip_image_features(coco_dataset, split, clip_backbone, device='cuda')
-    input_ids, attention_mask, label_ids = get_bert_training_features(coco_dataset, split, clip_backbone)
+    clip_features = get_clip_image_features(
+        coco_dataset, 
+        split, 
+        clip_backbone, 
+        device=device, 
+        batch_size=feat_batch_size,
+    )
+    input_ids, attention_mask, label_ids = get_bert_training_features(coco_dataset, split, clip_backbone.replace('/', ''))
     input_ids = torch.tensor(input_ids, dtype=torch.long)
     attention_mask = torch.tensor(attention_mask, dtype=torch.long)
     label_ids = torch.tensor(label_ids, dtype=torch.long)
@@ -123,7 +151,7 @@ def get_loader(train, clip_backbone):
     hidden_size = clip_features.size(1)
     print(clip_features.repeat(1,5).view(-1, hidden_size).size())
     dataset = TensorDataset(input_ids, attention_mask, label_ids, clip_features.repeat(1,5).view(-1, hidden_size))
-    loader = DataLoader(dataset=dataset, batch_size=128, num_workers=8, shuffle=True)
+    loader = DataLoader(dataset=dataset, batch_size=batch_size, num_workers=8, shuffle=True)
     return loader
 
 

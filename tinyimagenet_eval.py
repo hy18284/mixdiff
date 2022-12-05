@@ -7,6 +7,7 @@ from clip.simple_tokenizer import SimpleTokenizer as clip_tokenizer
 from tqdm import tqdm
 import numpy as np
 from sklearn.metrics import roc_auc_score
+import wandb
 
 
 def tokenize_for_clip(batch_sentences, tokenizer):
@@ -48,7 +49,7 @@ def greedysearch_generation_topk(clip_embed):
     top_k_list = torch.cat(top_k_list)
     return target_list, top_k_list
 
-
+@torch.no_grad()
 def image_decoder(clip_model, berttokenizer, device,  split, image_loaders=None):
     seen_labels = split[:20]
     seen_descriptions = [f"This is a photo of a {label}" for label in seen_labels]
@@ -98,6 +99,12 @@ if __name__ == '__main__':
     parser.add_argument('--trained_path', type=str, default='./trained_models/COCO/')
     args = parser.parse_args()
 
+    wandb.init(
+        config=args,
+        name='zoc_tiny_imagenet',
+        project='ZOC',
+    )
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.saved_model_path = args.trained_path + '/ViT-B32/'
 
@@ -107,7 +114,7 @@ if __name__ == '__main__':
     # initialize tokenizers for clip and bert, these two use different tokenizers
     berttokenizer = BertGenerationTokenizer.from_pretrained('google/bert_for_seq_generation_L-24_bbc_encoder')
 
-    clip_model = torch.jit.load(os.path.join('./trained_models', "{}.pt".format('ViT-B-32'))).to(device).eval()
+    clip_model = torch.jit.load(os.path.join('./trained_models/ViT-B32', "{}.pt".format('ViT-B32'))).to(device).eval()
     cliptokenizer = clip_tokenizer()
 
     bert_config = BertGenerationConfig.from_pretrained("google/bert_for_seq_generation_L-24_bbc_encoder")
@@ -115,7 +122,7 @@ if __name__ == '__main__':
     bert_config.add_cross_attention=True
     bert_model = BertGenerationDecoder.from_pretrained('google/bert_for_seq_generation_L-24_bbc_encoder',
                                                        config=bert_config).to(device).train()
-    bert_model.load_state_dict(torch.load(args.saved_model_path + 'model.pt')['net'])
+    bert_model.load_state_dict(torch.load(args.saved_model_path + 'model.pt', map_location=device)['net'])
 
     splits, tinyimg_loaders = tinyimage_single_isolated_class_loader()
     max_scores = []
@@ -124,6 +131,11 @@ if __name__ == '__main__':
     for split in splits:
         sum_score = image_decoder(clip_model, berttokenizer, device, split=split, image_loaders=tinyimg_loaders)
         sum_scores.append(sum_score)
+        wandb.log({'auroc': sum_score})
+
 
     print('sum auc on 5 splits:', sum_scores)
     print('average on 5 splits with sum score:', np.mean(sum_scores), 'stdv:', np.std(sum_scores))
+    avg_auroc = np.mean(sum_scores)
+    auroc_std = np.std(sum_scores)
+    wandb.log({'avg_auroc': avg_auroc, 'auroc_std': auroc_std})

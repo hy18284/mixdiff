@@ -8,6 +8,7 @@ from tqdm import tqdm
 import copy
 import numpy as np
 from sklearn.metrics import roc_auc_score
+import wandb
 
 
 def tokenize_for_clip(batch_sentences, tokenizer):
@@ -50,7 +51,7 @@ def greedysearch_generation_topk(clip_embed):
     top_k_list = torch.cat(top_k_list)
     return target_list, top_k_list
 
-
+@torch.no_grad()
 def image_decoder(clip_model, berttokenizer, device, in_loader, out_loaders):
     seen_labels = ['airplane', 'automobile', 'ship', 'truck']
     seen_descriptions = [f"This is a photo of a {label}" for label in seen_labels]

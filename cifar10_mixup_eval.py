@@ -178,11 +178,18 @@ if __name__ == '__main__':
                 known_mixup = known_mixup.reshape(M * N * N * R, C, H, W)
 
                 def batchfy(orig_images, input_ids):
+                    # print(orig_images.size())
+                    import time
+                    s_time = time.time()
                     orig_images_list = torch.split(orig_images, B, dim=0)
                     logits_list = []
                     for images in orig_images_list:
+                        print(images.size())
                         split_logits, _ = clip_model(images, input_ids)
                         logits_list.append(split_logits) 
+                    print(orig_images.size())
+                    print(input_ids.size())
+                    print(f'{time.time() - s_time}')
                     return torch.cat(logits_list, dim=0)
                 
                 known_logits = batchfy(known_mixup, prompt_ids)

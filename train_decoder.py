@@ -6,10 +6,13 @@ from dataloaders.coco_full_loader import get_loader
 from clip.simple_tokenizer import SimpleTokenizer as clip_tokenizer
 from transformers import AdamW
 from tqdm import tqdm
+import clip
+import wandb
 
 
 def train_decoder(bert_model, train_loader, eval_loader, optimizer):
     num_batch = len(iter(train_loader))
+    step = 0
     for epoch in range(args.num_epochs):
         acc_loss = 0
         print('Training : epoch {}'.format(epoch))
@@ -32,7 +35,11 @@ def train_decoder(bert_model, train_loader, eval_loader, optimizer):
             optimizer.zero_grad()
             acc_loss += out.loss.detach().item()
 
+            wandb.log({'train_loss_step': out.loss.item()}, step=step)
+            step += 1
+
         validation_loss = eval_decoder(bert_model, eval_loader)
+        wandb.log({'val_loss': validation_loss}, step=step)
         print('validation loss in this epoch: ', validation_loss)
         state = {'net': bert_model.state_dict(),
                  'epoch': epoch,
@@ -41,10 +48,12 @@ def train_decoder(bert_model, train_loader, eval_loader, optimizer):
         if epoch == 0:
             best_val_loss = validation_loss
             torch.save(state, args.saved_model_path+'model_dump.pt')
+            wandb.run.summary['best_val_loss'] = best_val_loss
         else:
             if validation_loss < best_val_loss :
                 best_val_loss = validation_loss
                 torch.save(state, args.saved_model_path+'model.pt')
+                wandb.run.summary['best_val_loss'] = best_val_loss
 
         print('Average loss on {} training batches in this epoch:{}\n'.format(num_batch, acc_loss/num_batch))
     return acc_loss
@@ -79,10 +88,22 @@ if __name__ == '__main__':
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=1e-4)
     parser.add_argument('--num_epochs', type=int, default=1, help="End epoch")  # trained with 25 epochs
+    parser.add_argument('--device', type=int, default=0)
+    parser.add_argument('--feat_batch_size', type=int, default=128)
+    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--trained_path', type=str, default='./trained_models/COCO/')
+    parser.add_argument('--backbone', type=str, default='ViT-B/32')
+    parser.add_argument('--wandb_name', type=str, default='decoder')
     args = parser.parse_args()
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    wandb.init(
+        config=args,
+        name=args.wandb_name,
+        project='ZOC',
+    )
+
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(args.device)
     args.saved_model_path = args.trained_path + '/ViT-B32/'
 
     if not os.path.exists(args.saved_model_path):
@@ -93,11 +114,29 @@ if __name__ == '__main__':
     cliptokenizer = clip_tokenizer()
 
     # loader to get preprocessed and encoded (image, caption) from COCO dataset
-    train_loader = get_loader(train=True, clip_backbone='ViT-B32')
-    eval_loader = get_loader(train=False, clip_backbone='ViT-B32')
+    eval_loader = get_loader(
+        train=False, 
+        clip_backbone=args.backbone,
+        device=device, 
+        feat_batch_size=args.feat_batch_size,
+        batch_size=args.batch_size,
+    )
+    train_loader = get_loader(
+        train=True, 
+        clip_backbone=args.backbone, 
+        device=device, 
+        feat_batch_size=args.feat_batch_size,
+        batch_size=args.batch_size,
+    )
 
     # load clip pretrained image encoder
-    clip_model = torch.jit.load(os.path.join('./trained_models', "{}.pt".format('ViT-B32'))).to(device).eval()
+    # clip_model = torch.jit.load(os.path.join('./trained_models', "{}.pt".format('ViT-B32'))).to(device).eval()
+    clip_model, _ = clip.load(
+        name=args.backbone, 
+        device='cpu', 
+        download_root=os.path.join('./trained_models', f'{args.backbone.replace("/", "")}'),
+    )
+    clip_model.to(device).eval()
 
     bert_config = BertGenerationConfig.from_pretrained("google/bert_for_seq_generation_L-24_bbc_encoder")
     bert_config.is_decoder=True
