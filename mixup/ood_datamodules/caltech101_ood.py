@@ -2,6 +2,7 @@ import random
 from pathlib import Path
 from collections import defaultdict
 import itertools
+import copy
 
 import torch
 from torchvision.datasets import Caltech101
@@ -63,7 +64,8 @@ class SimpleCaltech101(Dataset):
     
     def __getitem__(self, idx):
         image, label = self.data[idx]
-        image = image.convert('RGB')
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
         return self.transform(image), label
     
     def __len__(self):
@@ -92,7 +94,7 @@ class Caltech101OODDataset(BaseOODDataModule):
             ratio=VAL_RATIO, 
             seed=SEED,
         )
-        self.val = SimpleCaltech101(val_dict, self.transform)
+        self.val = SimpleCaltech101(copy.deepcopy(val_dict), self.transform)
 
         self.seen_classes = []
         for seed in range(NUM_SPLITS):
