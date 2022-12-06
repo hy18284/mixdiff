@@ -8,6 +8,8 @@ class MixDiffEnergy(
     MixDiffLogitBasedMixin,
     OODScoreCalculator,
 ):
+    name = 'energy'
+
     @torch.no_grad()
     def calculate_diff(
         self,
@@ -35,11 +37,3 @@ class MixDiffEnergy(
         else:
             neg_energy = torch.zeros_like(logits[..., -1])
         return -neg_energy
-
-    def __str__(self) -> str:
-        if not self.utilize_mixup:
-            return 'energy'
-        if self.calculate_base_scores:
-            return 'mixdiff_energy+'
-        else:
-            return 'mixdiff_energy'

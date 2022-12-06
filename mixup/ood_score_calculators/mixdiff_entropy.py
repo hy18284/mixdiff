@@ -9,6 +9,8 @@ class MixDiffEntropy(
     MixDiffLogitBasedMixin,
     OODScoreCalculator,
 ):
+    name = 'entropy'
+
     @torch.no_grad()
     def calculate_diff(
         self,
@@ -39,11 +41,3 @@ class MixDiffEntropy(
         else:
             entropy = torch.zeros_like(logits[..., -1])
         return entropy
-
-    def __str__(self) -> str:
-        if not self.utilize_mixup:
-            return 'entropy'
-        if self.calculate_base_scores:
-            return 'mixdiff_entropy+'
-        else:
-            return 'mixdiff_entropy'

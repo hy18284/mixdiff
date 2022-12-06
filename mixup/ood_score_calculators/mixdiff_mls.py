@@ -8,6 +8,8 @@ class MixDiffMaxLogitScore(
     MixDiffLogitBasedMixin,
     OODScoreCalculator,
 ):
+    name = 'mls'
+
     @torch.no_grad()
     def calculate_diff(
         self,
@@ -31,11 +33,3 @@ class MixDiffMaxLogitScore(
         else:
             max_logits = torch.zeros_like(logits[..., -1])
         return -max_logits
-
-    def __str__(self) -> str:
-        if not self.utilize_mixup:
-            return 'mls'
-        if self.calculate_base_scores:
-            return 'mixdiff_mls+'
-        else:
-            return 'mixdiff_mls'

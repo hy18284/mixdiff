@@ -80,3 +80,11 @@ class MixDiffLogitBasedMixin:
             split_logits = logit_scale * image_embeds @ self.prompts_embeds.t()
             logits_list.append(split_logits) 
         return torch.cat(logits_list, dim=0)
+
+    def __str__(self) -> str:
+        if not self.utilize_mixup:
+            return f'{self.name}'
+        if self.add_base_score:
+            return f'mixdiff_{self.name}+'
+        else:
+            return f'mixdiff_{self.name}'

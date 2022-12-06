@@ -10,6 +10,7 @@ class MixDiffMaxSofmaxProb(
     MixDiffLogitBasedMixin,
     OODScoreCalculator,
 ):
+    name = 'msp'
     @torch.no_grad()
     def calculate_diff(
         self,
@@ -37,11 +38,3 @@ class MixDiffMaxSofmaxProb(
         else:
             max_probs = torch.zeros_like(logits[..., -1])
         return -max_probs
-
-    def __str__(self) -> str:
-        if not self.utilize_mixup:
-            return 'msp'
-        if self.calculate_base_scores:
-            return 'mixdiff_msp+'
-        else:
-            return 'mixdiff_msp'

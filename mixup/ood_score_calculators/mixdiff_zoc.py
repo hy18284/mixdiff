@@ -17,10 +17,14 @@ class MixDiffZOC(OODScoreCalculator):
     def __init__(
         self,
         zoc_checkpoint_path: str,
-        # backbone_name: str,
+        batch_size: int,
+        utilize_mixup: bool = True,
+        add_base_scores: bool = True,
     ):
+        self.batch_size = batch_size
         self.zoc_checkpoint_path = zoc_checkpoint_path
-        # self.backbone_name = backbone_name
+        self.utilize_mixup = utilize_mixup
+        self.add_base_scores = add_base_scores
     
     def load_model(self, backbone_name, device):
         self.device = device
@@ -69,7 +73,6 @@ class MixDiffZOC(OODScoreCalculator):
         image_embeds = self.clip_model.encode_image(images)
         logit_scale = self.clip_model.logit_scale.exp()
         logits = logit_scale * image_embeds @ self.prompts_embeds.t()
-        base_scores = self.calculate_base_scores(images)
         return {
             'logits': logits,
             'images': images,
@@ -91,32 +94,31 @@ class MixDiffZOC(OODScoreCalculator):
         self,
         images,
     ):
-        return self._compute_zoc_scores(images)
+        images_list = torch.split(images, self.batch_size, dim=0)
+        scores_list = []
+        for split_images in images_list:
+            split_scores = self._compute_zoc_scores(split_images) 
+            scores_list.append(split_scores) 
+        return torch.cat(scores_list, dim=0)
 
     def calculate_diff(
         self,
         known_logits,
         unknown_logits,
     ):
-        known_probs = torch.softmax(known_logits, dim=-1)
-        known_max, _ = torch.max(known_probs, dim=-1) 
-
-        unknown_probs = torch.softmax(unknown_logits, dim=-1)
-        unknown_max, _ = torch.max(unknown_probs, dim=-1) 
-
-        dists = known_max - unknown_max
-        return dists
+        return unknown_logits - known_logits        
 
     def calculate_base_scores(
         self,
-        logits,
         images,
         **kwargs,
     ):
-        return self._compute_zoc_scores(images)
-
-    def __str__(self) -> str:
-        return 'mixdiff_msp'
+        images_list = torch.split(images, self.batch_size, dim=0)
+        scores_list = []
+        for split_images in images_list:
+            split_scores = self._compute_zoc_scores(split_images) 
+            scores_list.append(split_scores) 
+        return torch.cat(scores_list, dim=0)
 
     def _compute_zoc_scores(self, images):
         B = images.size(0)
@@ -174,37 +176,7 @@ class MixDiffZOC(OODScoreCalculator):
         zeroshot_probs = zeroshot_logits.softmax(dim=-1)
         ood_probs = torch.sum(zeroshot_probs[:, self.prompts_embeds.size(0):], dim=-1)
         return ood_probs.unsqueeze(-1)
-
-        scores = [
-            self._compute_zoc_scores_per_image(images)
-            for images in images
-        ]
-        return torch.stack(scores, dim=0).unsqueeze(-1)
     
-    def _compute_zoc_scores_per_image(self, image):
-        image = image.unsqueeze(0)
-        clip_out = self.clip_model.encode_image(image).float()
-        clip_extended_embed = clip_out.repeat(1, 2).type(torch.FloatTensor)
-
-        #greedy generation
-        target_list, topk_list = self.greedysearch_generation_topk(clip_extended_embed)
-
-        topk_tokens = [self.berttokenizer.decode(int(pred_idx.cpu().numpy())) for pred_idx in topk_list]
-
-        unique_entities = list(set(topk_tokens) - set(self.seen_labels))
-        unseen_prompts = [f"This is a photo of a {label}" for label in unique_entities]
-        unseen_input_ids = self.tokenize_for_clip(unseen_prompts).to(self.device)
-        unseen_text_embeds = self.clip_model.encode_text(unseen_input_ids)
-        text_features = torch.cat([self.prompts_embeds, unseen_text_embeds], dim=0).float()
-        text_features /= text_features.norm(dim=-1, keepdim=True)
-
-        image_feature = self.clip_model.encode_image(image).float()
-        image_feature /= image_feature.norm(dim=-1, keepdim=True)
-
-        zeroshot_probs = (100.0 * image_feature @ text_features.T).softmax(dim=-1).squeeze()
-        ood_prob = zeroshot_probs[self.prompts_embeds.size(0):].sum()
-        return ood_prob
-
     def tokenize_for_clip(self, batch_sentences):
         default_length = 77  # CLIP default
         sot_token = self.cliptokenizer.encoder['<|startoftext|>']
@@ -219,7 +191,6 @@ class MixDiffZOC(OODScoreCalculator):
         return tokenized_list
 
     def greedysearch_generation_topk(self, clip_embeds):
-        N = 1  # batch has single sample
         B = clip_embeds.size(0)
         max_len = 77
         target = torch.tensor(self.berttokenizer.bos_token_id, device=self.device)
@@ -249,3 +220,11 @@ class MixDiffZOC(OODScoreCalculator):
             if i == 9:  # the entitiy word is in at most first 10 words
                 break
         return target, top_k_indices
+
+    def __str__(self) -> str:
+        if not self.utilize_mixup:
+            return 'zoc'
+        if self.add_base_scores:
+            return 'mixdiff_zoc+'
+        else:
+            return 'mixdiff_zoc'
