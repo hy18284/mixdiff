@@ -108,6 +108,8 @@ if __name__ == '__main__':
                     chosen_images = chosen_images.unsqueeze(-1) * rates 
                     images_m = images_m.unsqueeze(-1) * (1 - rates)
                     known_mixup = chosen_images + images_m
+                    del chosen_images
+                    del images_m
                     known_mixup = known_mixup.permute(0, 1, 2, 6, 3, 4, 5)
                     known_mixup = known_mixup.reshape(M * N * N * R, C, H, W)
 

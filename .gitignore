@@ -4,3 +4,6 @@
 *.pyc
 /results
 /trained_models
+/CLIP
+/charts
+*.xlsx
