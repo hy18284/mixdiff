@@ -1,3 +1,4 @@
+from typing import Optional
 import random
 
 import torch
@@ -31,7 +32,7 @@ class CIFAR100Wrapper(CIFAR100):
 
 
 class CIFAR100OODDataset(BaseOODDataModule):
-    def __init__(self, shuffle: bool = True):
+    def __init__(self, shuffle: bool = True, max_split: Optional[int] = None):
         self.cifar100_loaders_train = cifar100_single_isolated_class_loader(train=True)
         self.cifar100 = CIFAR100Wrapper(root='./data', train=False, download=True)
         self.idx2class = {v:k for k,v in self.cifar100.class_to_idx.items()}
@@ -43,9 +44,14 @@ class CIFAR100OODDataset(BaseOODDataModule):
             list(range(80, 100))
         ]
         self.shuffle = shuffle
+        self.max_split = max_split
 
     def get_splits(self, n_samples_per_class: int, seed: int):
         for i in range(len(self.splits)):
+
+            if self.max_split is not None and i >= self.max_split:
+                break
+
             seen_class_names = self.get_seen_class_names(i)
             given_images = self.sample_given_images(
                 seen_class_names, 
