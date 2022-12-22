@@ -136,12 +136,9 @@ class MixDiffZOC(OODScoreCalculator):
         for top_k_idx in top_k_idx_batch:
             top_k_tokens = [
                 self.berttokenizer.decode(unseen_idx)
-                for unseen_idx in set(top_k_idx.to(torch.long).tolist())
+                for unseen_idx in top_k_idx.tolist()
             ]
-            top_k_tokens = [
-                top_k_token for top_k_token in top_k_tokens
-                if top_k_token not in self.seen_labels
-            ]
+            top_k_tokens = list(set(top_k_tokens) - set(self.seen_labels))
             num_top_k_tokens.append(len(top_k_tokens))
             unseen_prompts = [f"This is a photo of a {label}" for label in top_k_tokens]
             unseen_ids = self.tokenize_for_clip(unseen_prompts).to(self.device)
