@@ -129,20 +129,34 @@ class MixDiffZOC(OODScoreCalculator):
         clip_extended_embeds = clip_extended_embeds.unsqueeze(1)
 
         #greedy generation
-        _, top_k_idx_list = self.greedysearch_generation_topk(clip_extended_embeds)
+        _, top_k_idx_batch = self.greedysearch_generation_topk(clip_extended_embeds)
         
         unseen_ids_list = []
-        top_k_tokens_list = []
-        for top_k_idx in top_k_idx_list:
+        num_top_k_tokens = []
+        for top_k_idx in top_k_idx_batch:
             top_k_tokens = [
-                self.berttokenizer.decode(int(pred_idx.cpu().numpy())) 
-                for pred_idx in top_k_idx
+                self.berttokenizer.decode(unseen_idx)
+                for unseen_idx in set(top_k_idx.to(torch.long).tolist())
             ]
-            top_k_tokens_list.append(top_k_tokens)
+            top_k_tokens = [
+                top_k_token for top_k_token in top_k_tokens
+                if top_k_token not in self.seen_labels
+            ]
+            num_top_k_tokens.append(len(top_k_tokens))
             unseen_prompts = [f"This is a photo of a {label}" for label in top_k_tokens]
             unseen_ids = self.tokenize_for_clip(unseen_prompts).to(self.device)
             unseen_ids_list.append(unseen_ids)
-
+        
+        max_unique = max(len(unseen_ids) for unseen_ids in unseen_ids_list)
+        for i, unseen_ids in enumerate(unseen_ids_list):
+            padding_ids = torch.zeros(
+                max_unique - unseen_ids.size(0),
+                unseen_ids.size(1),
+                dtype=unseen_ids.dtype,
+                device=unseen_ids.device,
+            )
+            unseen_ids_list[i] = torch.cat([unseen_ids, padding_ids], dim=0)
+        
         # (B * NU, H)
         unseen_ids = torch.cat(unseen_ids_list, dim=0)
         unseen_text_embeds = self.clip_model.encode_text(unseen_ids)
@@ -165,14 +179,12 @@ class MixDiffZOC(OODScoreCalculator):
             logits_list.append(logits)
         zeroshot_logits = torch.stack(logits_list, dim=0)
 
-        unseen_mask = []
-        for top_k_tokens in top_k_tokens_list:
-            row = [token in self.seen_labels for token in top_k_tokens]
-            unseen_mask.append(row)
-        unseen_mask = torch.tensor(unseen_mask, device=self.device)
+        mask = torch.arange(0, max_unique, device=self.device)
+        num_top_k_tokens = torch.tensor(num_top_k_tokens, device=self.device).unsqueeze(1)
+        mask = mask >= num_top_k_tokens
 
         zeroshot_logits[:, self.prompts_embeds.size(0):].masked_fill_(
-            unseen_mask,
+            mask,
             float('-inf'),
         )
         zeroshot_probs = zeroshot_logits.softmax(dim=-1)
@@ -197,7 +209,7 @@ class MixDiffZOC(OODScoreCalculator):
         max_len = 77
         target = torch.tensor(self.berttokenizer.bos_token_id, device=self.device)
         target = target.expand(B, 1)
-        top_k_indices = torch.Tensor(B, 0).to(self.device)
+        top_k_indices = torch.Tensor(B, 0).to(self.device).to(torch.long)
         self.bert_model.eval()
         for i in range(max_len):
             if self.follow_zoc:
