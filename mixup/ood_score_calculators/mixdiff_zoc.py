@@ -59,7 +59,7 @@ class MixDiffZOC(OODScoreCalculator):
         prompts_ids = [clip.tokenize(prompt) for prompt in seen_descriptions]
         prompts_ids = torch.cat(prompts_ids, dim=0).to(self.device)
         prompts_ids = prompts_ids.to(self.device)
-        self.prompts_embeds = self.clip_model.encode_text(prompts_ids)
+        self.prompts_embeds = self.clip_model.encode_text(prompts_ids).float()
         self.seen_labels = seen_labels
     
     def on_eval_end(self):
@@ -70,9 +70,9 @@ class MixDiffZOC(OODScoreCalculator):
         self,
         images,
     ):
-        image_embeds = self.clip_model.encode_image(images)
-        logit_scale = self.clip_model.logit_scale.exp()
-        logits = logit_scale * image_embeds @ self.prompts_embeds.t()
+        image_embeds = self.clip_model.encode_image(images).float()
+        # Follow ZOC's logit scaling.
+        logits = 100.0 * image_embeds @ self.prompts_embeds.t()
         return {
             'logits': logits,
             'images': images,
