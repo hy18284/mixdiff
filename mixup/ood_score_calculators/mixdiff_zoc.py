@@ -20,11 +20,13 @@ class MixDiffZOC(OODScoreCalculator):
         batch_size: int,
         utilize_mixup: bool = True,
         add_base_scores: bool = True,
+        follow_zoc: bool = True,
     ):
         self.batch_size = batch_size
         self.zoc_checkpoint_path = zoc_checkpoint_path
         self.utilize_mixup = utilize_mixup
         self.add_base_scores = add_base_scores
+        self.follow_zoc = follow_zoc
     
     def load_model(self, backbone_name, device):
         self.device = device
@@ -198,13 +200,17 @@ class MixDiffZOC(OODScoreCalculator):
         top_k_indices = torch.Tensor(B, 0).to(self.device)
         self.bert_model.eval()
         for i in range(max_len):
-            L = target.size(1)
+            if self.follow_zoc:
+                # Follow ZOC's code, even if it does not make sense at all.
+                L = 1
+            else:
+                L = target.size(1)
             position_ids = torch.arange(0, L).expand(B, L).to(self.device)
             with torch.no_grad():
                 out = self.bert_model(
                     input_ids=target.to(self.device),
                     position_ids=position_ids,
-                    attention_mask=torch.ones(B, L).unsqueeze(0).to(self.device),
+                    attention_mask=torch.ones(B, L).to(self.device),
                     encoder_hidden_states=clip_embeds.to(self.device),
             )
             # (B, L, V) -> (B, L, 1) -> (B, 1)
