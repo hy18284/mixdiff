@@ -100,7 +100,7 @@ class MixDiffZOC(OODScoreCalculator):
         scores_list = []
         for split_images in images_list:
             split_scores = self._compute_zoc_scores(split_images) 
-            scores_list.append(split_scores) 
+            scores_list.append(split_scores.unsqueeze(-1))
         return torch.cat(scores_list, dim=0)
 
     def calculate_diff(
@@ -157,6 +157,13 @@ class MixDiffZOC(OODScoreCalculator):
         # (B * NU, H)
         unseen_ids = torch.cat(unseen_ids_list, dim=0)
         unseen_text_embeds = self.clip_model.encode_text(unseen_ids)
+
+        # unseen_text_embeds_list = []
+        # for split_unseen_ids in torch.split(unseen_ids, self.batch_size, dim=0):
+        #     split_unseen_text_embeds = self.clip_model.encode_text(split_unseen_ids)
+        #     unseen_text_embeds_list.append(split_unseen_text_embeds)
+        # unseen_text_embeds = torch.cat(unseen_text_embeds_list, dim=0)
+
         # (B * NU, H) -> (B, NU, H)
         unseen_text_embeds = unseen_text_embeds.view(B, -1, unseen_text_embeds.size(-1))
 
@@ -186,7 +193,7 @@ class MixDiffZOC(OODScoreCalculator):
         )
         zeroshot_probs = zeroshot_logits.softmax(dim=-1)
         ood_probs = torch.sum(zeroshot_probs[:, self.prompts_embeds.size(0):], dim=-1)
-        return ood_probs.unsqueeze(-1)
+        return ood_probs
     
     def tokenize_for_clip(self, batch_sentences):
         default_length = 77  # CLIP default

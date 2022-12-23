@@ -27,6 +27,7 @@ def parse_args():
     parser.add_argument('--abs', action='store_true')
     parser.add_argument('--top_1', action='store_true')
     parser.add_argument('--gamma', type=float, default=1.0)
+    parser.add_argument('--max_samples', type=int, default=None, required=False)
     parser.add_subclass_arguments(OODScoreCalculator, 'score_calculator')
     parser.add_subclass_arguments(BaseOODDataModule, 'datamodule')
     parser.add_argument('--config', action=ActionConfigFile)
@@ -80,6 +81,7 @@ if __name__ == '__main__':
 
         loader = datamodule.construct_loader(batch_size=batch_size)
         score_calculator.on_eval_start(copy.deepcopy(seen_labels))
+        cur_num_samples = 0
 
         for i, (images, labels) in enumerate(tqdm(loader)):
             N, C, H, W = images.size()
@@ -165,6 +167,10 @@ if __name__ == '__main__':
             
             targets += [int(label not in seen_idx) for label in labels]
             scores += dists.tolist()
+
+            cur_num_samples += N
+            if args.max_samples is not None and cur_num_samples >= args.max_samples:
+                break
             
         score_calculator.on_eval_end()
 
@@ -175,8 +181,8 @@ if __name__ == '__main__':
         print(f'ood_mean: {ood_mean}')
         print(f'id_mean: {id_mean}')
         print(f'ood - id mean: {ood_mean - id_mean}')
-            
-        auroc = roc_auc_score(targets, scores)
+        
+        auroc = roc_auc_score(targets[:args.max_samples], scores[:args.max_samples])
         print(f'auroc: {auroc}')
         wandb.log({'auroc': auroc})
         aurocs.append(auroc)
