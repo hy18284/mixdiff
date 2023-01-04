@@ -22,6 +22,7 @@ class MixDiffZOC(OODScoreCalculator):
         add_base_scores: bool = True,
         follow_zoc: bool = True,
         half_precision: bool = False,
+        avg_logits: bool = False,
     ):
         self.batch_size = batch_size
         self.zoc_checkpoint_path = zoc_checkpoint_path
@@ -29,6 +30,7 @@ class MixDiffZOC(OODScoreCalculator):
         self.add_base_scores = add_base_scores
         self.follow_zoc = follow_zoc
         self.half_precision = half_precision
+        self.avg_logits = avg_logits
     
     def load_model(self, backbone_name, device):
         self.device = device
@@ -103,8 +105,19 @@ class MixDiffZOC(OODScoreCalculator):
         images_list = torch.split(images, self.batch_size, dim=0)
         scores_list = []
         for split_images in images_list:
-            split_scores = self._compute_zoc_scores(split_images) 
-            scores_list.append(split_scores.unsqueeze(-1))
+            split_logits = self._compute_zoc_logits(split_images) 
+
+            if self.avg_logits:
+                ood_logits = split_logits[:, self.prompts_embeds.size(0):]
+                ood_logits = torch.mean(ood_logits, dim=-1, keepdim=True)
+
+                id_logits = split_logits[:, :self.prompts_embeds.size(0)]
+                split_scores = torch.cat([id_logits, ood_logits], dim=-1)
+            else:
+                split_scores = self._calculate_zoc_scores(split_logits)
+                split_scores = split_scores.unsqueeze(-1)
+
+            scores_list.append(split_scores)
         return torch.cat(scores_list, dim=0)
 
     def calculate_diff(
@@ -112,6 +125,11 @@ class MixDiffZOC(OODScoreCalculator):
         known_logits,
         unknown_logits,
     ):
+        if self.avg_logits:
+            unknown_scores = self._calculate_zoc_scores(unknown_logits)
+            known_scores = self._calculate_zoc_scores(known_logits)
+            return unknown_scores - known_scores
+
         return unknown_logits - known_logits        
 
     def calculate_base_scores(
@@ -122,11 +140,12 @@ class MixDiffZOC(OODScoreCalculator):
         images_list = torch.split(images, self.batch_size, dim=0)
         scores_list = []
         for split_images in images_list:
-            split_scores = self._compute_zoc_scores(split_images) 
+            split_logits = self._compute_zoc_logits(split_images) 
+            split_scores = self._calculate_zoc_scores(split_logits)
             scores_list.append(split_scores) 
         return torch.cat(scores_list, dim=0)
 
-    def _compute_zoc_scores(self, images):
+    def _compute_zoc_logits(self, images):
         B = images.size(0)
         clip_out = self.clip_model.encode_image(images).float()
         clip_extended_embeds = clip_out.repeat(1, 2).type(torch.FloatTensor)
@@ -162,12 +181,6 @@ class MixDiffZOC(OODScoreCalculator):
         unseen_ids = torch.cat(unseen_ids_list, dim=0)
         unseen_text_embeds = self.clip_model.encode_text(unseen_ids)
 
-        # unseen_text_embeds_list = []
-        # for split_unseen_ids in torch.split(unseen_ids, self.batch_size, dim=0):
-        #     split_unseen_text_embeds = self.clip_model.encode_text(split_unseen_ids)
-        #     unseen_text_embeds_list.append(split_unseen_text_embeds)
-        # unseen_text_embeds = torch.cat(unseen_text_embeds_list, dim=0)
-
         # (B * NU, H) -> (B, NU, H)
         unseen_text_embeds = unseen_text_embeds.view(B, -1, unseen_text_embeds.size(-1))
 
@@ -195,9 +208,7 @@ class MixDiffZOC(OODScoreCalculator):
             mask,
             float('-inf'),
         )
-        zeroshot_probs = zeroshot_logits.softmax(dim=-1)
-        ood_probs = torch.sum(zeroshot_probs[:, self.prompts_embeds.size(0):], dim=-1)
-        return ood_probs
+        return zeroshot_logits
     
     def tokenize_for_clip(self, batch_sentences):
         default_length = 77  # CLIP default
@@ -251,11 +262,22 @@ class MixDiffZOC(OODScoreCalculator):
             if i == 9:  # the entitiy word is in at most first 10 words
                 break
         return target, top_k_indices
+    
+    def _calculate_zoc_scores(self, logits: torch.FloatTensor):
+        zeroshot_probs = logits.softmax(dim=-1)
+        ood_probs = torch.sum(zeroshot_probs[:, self.prompts_embeds.size(0):], dim=-1)
+        return ood_probs
 
     def __str__(self) -> str:
         if not self.utilize_mixup:
             return 'zoc'
         if self.add_base_scores:
-            return 'mixdiff_zoc+'
+            if self.avg_logits:
+                return 'mixdiff_lg_avg_zoc+'
+            else:
+                return 'mixdiff_zoc+'
         else:
-            return 'mixdiff_zoc'
+            if self.avg_logits:
+                return 'mixdiff_lg_avg_zoc+'
+            else:
+                return 'mixdiff_zoc'
