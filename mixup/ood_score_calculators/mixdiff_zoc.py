@@ -21,12 +21,14 @@ class MixDiffZOC(OODScoreCalculator):
         utilize_mixup: bool = True,
         add_base_scores: bool = True,
         follow_zoc: bool = True,
+        half_precision: bool = False,
     ):
         self.batch_size = batch_size
         self.zoc_checkpoint_path = zoc_checkpoint_path
         self.utilize_mixup = utilize_mixup
         self.add_base_scores = add_base_scores
         self.follow_zoc = follow_zoc
+        self.half_precision = half_precision
     
     def load_model(self, backbone_name, device):
         self.device = device
@@ -55,6 +57,8 @@ class MixDiffZOC(OODScoreCalculator):
         )
         self.bert_model.eval()
         self.bert_model.to(self.device)
+        if self.half_precision:
+            self.bert_model.half()
     
     def on_eval_start(self, seen_labels):
         seen_descriptions = [f"This is a photo of a {label}" for label in seen_labels]
@@ -209,8 +213,13 @@ class MixDiffZOC(OODScoreCalculator):
         return tokenized_list
 
     def greedysearch_generation_topk(self, clip_embeds):
+        clip_embeds = clip_embeds.to(
+            torch.float16 if self.half_precision else torch.float32
+        )
+        clip_embeds = clip_embeds.to(self.device)
         B = clip_embeds.size(0)
         max_len = 77
+
         target = torch.tensor(self.berttokenizer.bos_token_id, device=self.device)
         target = target.expand(B, 1)
         top_k_indices = torch.Tensor(B, 0).to(self.device).to(torch.long)
@@ -227,7 +236,7 @@ class MixDiffZOC(OODScoreCalculator):
                     input_ids=target.to(self.device),
                     position_ids=position_ids,
                     attention_mask=torch.ones(B, L).to(self.device),
-                    encoder_hidden_states=clip_embeds.to(self.device),
+                    encoder_hidden_states=clip_embeds,
             )
             # (B, L, V) -> (B, L, 1) -> (B, 1)
             pred_idx = out.logits.argmax(dim=2, keepdim=True)[:, -1, :]
