@@ -27,6 +27,7 @@ class MixDiffZOC(OODScoreCalculator):
         follow_zoc: bool = True,
         half_precision: bool = False,
         avg_logits: Optional[str] = None,
+        avg_base_logits: Optional[str] = None,
     ):
         self.batch_size = batch_size
         self.zoc_checkpoint_path = zoc_checkpoint_path
@@ -35,6 +36,7 @@ class MixDiffZOC(OODScoreCalculator):
         self.follow_zoc = follow_zoc
         self.half_precision = half_precision
         self.avg_logits = avg_logits
+        self.avg_base_logits = avg_base_logits
     
     def load_model(self, backbone_name, device):
         self.device = device
@@ -154,6 +156,13 @@ class MixDiffZOC(OODScoreCalculator):
         scores_list = []
         for split_images in images_list:
             split_logits = self._compute_zoc_logits(split_images) 
+            if self.avg_base_logits == 'exp':
+                ood_logits = split_logits[:, self.prompts_embeds.size(0):]
+                ood_logits = torch.mean(torch.exp(ood_logits), dim=-1, keepdim=True)
+                ood_logits = torch.log(ood_logits)
+
+                id_logits = split_logits[:, :self.prompts_embeds.size(0)]
+                split_scores = torch.cat([id_logits, ood_logits], dim=-1)
             split_scores = self._calculate_zoc_scores(split_logits)
             scores_list.append(split_scores) 
         return torch.cat(scores_list, dim=0)
@@ -282,19 +291,23 @@ class MixDiffZOC(OODScoreCalculator):
         return ood_probs
 
     def __str__(self) -> str:
+        if self.avg_base_logits == 'exp':
+            base_name = 'zoc_exp'
+        else:
+            base_name = 'zoc'
         if not self.utilize_mixup:
-            return 'zoc'
+            return base_name
         if self.add_base_scores:
             if self.avg_logits == 'raw':
-                return 'mixdiff_lg_avg_zoc+'
+                return f'mixdiff_lg_avg_{base_name}+'
             elif self.avg_logits == 'exp':
-                return 'mixdiff_lge_avg_zoc+'
+                return f'mixdiff_lge_avg_{base_name}+'
             else:
-                return 'mixdiff_zoc+'
+                return f'mixdiff_{base_name}+'
         else:
             if self.avg_logits == 'raw':
-                return 'mixdiff_lg_avg_zoc'
+                return f'mixdiff_lg_avg_{base_name}'
             elif self.avg_logits == 'exp':
-                return 'mixdiff_lge_avg_zoc'
+                return f'mixdiff_lge_avg_{base_name}'
             else:
-                return 'mixdiff_zoc'
+                return f'mixdiff_{base_name}'
