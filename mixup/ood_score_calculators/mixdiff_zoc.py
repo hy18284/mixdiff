@@ -1,3 +1,7 @@
+from typing import (
+    Optional,
+)
+
 import torch
 from clip.simple_tokenizer import SimpleTokenizer as clip_tokenizer
 import clip
@@ -22,7 +26,7 @@ class MixDiffZOC(OODScoreCalculator):
         add_base_scores: bool = True,
         follow_zoc: bool = True,
         half_precision: bool = False,
-        avg_logits: bool = False,
+        avg_logits: Optional[str] = None,
     ):
         self.batch_size = batch_size
         self.zoc_checkpoint_path = zoc_checkpoint_path
@@ -107,12 +111,21 @@ class MixDiffZOC(OODScoreCalculator):
         for split_images in images_list:
             split_logits = self._compute_zoc_logits(split_images) 
 
-            if self.avg_logits:
+            if self.avg_logits == 'raw':
                 ood_logits = split_logits[:, self.prompts_embeds.size(0):]
                 ood_logits = torch.mean(ood_logits, dim=-1, keepdim=True)
 
                 id_logits = split_logits[:, :self.prompts_embeds.size(0)]
                 split_scores = torch.cat([id_logits, ood_logits], dim=-1)
+
+            elif self.avg_logits == 'exp':
+                ood_logits = split_logits[:, self.prompts_embeds.size(0):]
+                ood_logits = torch.mean(torch.exp(ood_logits), dim=-1, keepdim=True)
+                ood_logits = torch.log(ood_logits)
+
+                id_logits = split_logits[:, :self.prompts_embeds.size(0)]
+                split_scores = torch.cat([id_logits, ood_logits], dim=-1)
+                
             else:
                 split_scores = self._calculate_zoc_scores(split_logits)
                 split_scores = split_scores.unsqueeze(-1)
@@ -125,7 +138,7 @@ class MixDiffZOC(OODScoreCalculator):
         known_logits,
         unknown_logits,
     ):
-        if self.avg_logits:
+        if self.avg_logits is not None:
             unknown_scores = self._calculate_zoc_scores(unknown_logits)
             known_scores = self._calculate_zoc_scores(known_logits)
             return unknown_scores - known_scores
@@ -272,12 +285,16 @@ class MixDiffZOC(OODScoreCalculator):
         if not self.utilize_mixup:
             return 'zoc'
         if self.add_base_scores:
-            if self.avg_logits:
+            if self.avg_logits == 'raw':
                 return 'mixdiff_lg_avg_zoc+'
+            elif self.avg_logits == 'exp':
+                return 'mixdiff_lge_avg_zoc+'
             else:
                 return 'mixdiff_zoc+'
         else:
-            if self.avg_logits:
-                return 'mixdiff_lg_avg_zoc+'
+            if self.avg_logits == 'raw':
+                return 'mixdiff_lg_avg_zoc'
+            elif self.avg_logits == 'exp':
+                return 'mixdiff_lge_avg_zoc'
             else:
                 return 'mixdiff_zoc'
