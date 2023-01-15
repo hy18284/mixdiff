@@ -162,7 +162,7 @@ class MixDiffZOC(OODScoreCalculator):
                 ood_logits = torch.log(ood_logits)
 
                 id_logits = split_logits[:, :self.prompts_embeds.size(0)]
-                split_scores = torch.cat([id_logits, ood_logits], dim=-1)
+                split_logits = torch.cat([id_logits, ood_logits], dim=-1)
             split_scores = self._calculate_zoc_scores(split_logits)
             scores_list.append(split_scores) 
         return torch.cat(scores_list, dim=0)
