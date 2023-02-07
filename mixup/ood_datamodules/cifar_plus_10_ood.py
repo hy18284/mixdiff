@@ -122,7 +122,7 @@ class CIFARPlus10OODDataset(BaseOODDataModule):
         seen_idx = torch.tensor(seen_idx)
         return seen_idx
     
-    def construct_loader(self, batch_size: int):
+    def construct_loader(self, batch_size: int, shuffle: bool = True):
         cifar_plus_10 = CIFARPlus(
             self.in_dataset,
             self.out_datasets[self.cur_loader_idx],
@@ -131,7 +131,7 @@ class CIFARPlus10OODDataset(BaseOODDataModule):
             cifar_plus_10, 
             batch_size=batch_size, 
             num_workers=2, 
-            shuffle=True
+            shuffle=shuffle,
         )
         self.cur_loader_idx += 1
         return loader

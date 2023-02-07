@@ -7,7 +7,7 @@ class BaseOODDataModule(ABC):
         pass
 
     @abstractmethod
-    def construct_loader(self, batch_size: int):
+    def construct_loader(self, batch_size: int, shuffle: bool = True):
         pass
 
     @abstractmethod

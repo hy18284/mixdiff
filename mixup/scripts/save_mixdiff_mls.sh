@@ -4,7 +4,7 @@ for method in \
     MixDiffMaxLogitScore
 do 
     for dataset in \
-        CIFAR100OODDataset 
+        CIFAR10OODDataset 
     do
         python -m mixup.save_mixup_scores \
             --n 15 \
@@ -13,15 +13,10 @@ do
             --gamma 2.0 \
             --seed 0 \
             --wandb_name logging \
-            --device 7 \
+            --device 2 \
+            --shuffle false \
             --score_calculator.class_path mixup.ood_score_calculators.$method \
             --score_calculator.init_args.batch_size 12288 \
-            --datamodule.class_path mixup.ood_datamodules.$dataset \
-            --datamodule.init_args.shuffle false
+            --datamodule.class_path mixup.ood_datamodules.$dataset
     done
 done
-        # CIFARPlus50OODDataset \ 
-        # TinyImageNetOODDataset 
-        # CIFAR10OODDataset \
-        # CIFAR100OODDataset \
-        # CIFARPlus10OODDataset \

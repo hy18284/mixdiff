@@ -30,6 +30,9 @@ def parse_args():
     parser.add_argument('--abs', action='store_true')
     parser.add_argument('--top_1', action='store_true')
     parser.add_argument('--gamma', type=float, default=1.0)
+    parser.add_argument('--max_samples', type=int, default=None, required=False)
+    parser.add_argument('--truncate_by_max_samples', type=bool, default=False)
+    parser.add_argument('--shuffle', type=bool, default=False)
     parser.add_subclass_arguments(OODScoreCalculator, 'score_calculator')
     parser.add_subclass_arguments(BaseOODDataModule, 'datamodule')
     parser.add_argument('--config', action=ActionConfigFile)
@@ -82,9 +85,13 @@ if __name__ == '__main__':
         scores = []
         table = defaultdict(list)
 
-        loader = datamodule.construct_loader(batch_size=batch_size)
+        loader = datamodule.construct_loader(
+            batch_size=batch_size, 
+            shuffle=args.shuffle,
+        )
         score_calculator.on_eval_start(copy.deepcopy(seen_labels))
-
+        cur_num_samples = 0
+        
         for i, (images, labels) in enumerate(tqdm(loader)):
             N, C, H, W = images.size()
             NC = len(seen_labels)
@@ -112,6 +119,8 @@ if __name__ == '__main__':
                     chosen_images = chosen_images.unsqueeze(-1) * rates 
                     images_m = images_m.unsqueeze(-1) * (1 - rates)
                     known_mixup = chosen_images + images_m
+                    del chosen_images
+                    del images_m
                     known_mixup = known_mixup.permute(0, 1, 2, 6, 3, 4, 5)
                     known_mixup = known_mixup.reshape(M * N * N * R, C, H, W)
 
@@ -177,8 +186,18 @@ if __name__ == '__main__':
             chosen_img_labels = seen_idx[max_idx]
             table['chosen_img_label'] += chosen_img_labels.tolist()
             table['base+gamma*mixdiff'] += dists.tolist()
+
+            cur_num_samples += N
+            if args.max_samples is not None and cur_num_samples >= args.max_samples:
+                break
             
         score_calculator.on_eval_end()
+
+        if args.truncate_by_max_samples:
+            for key in table.keys():
+                table[key] = table[key][:args.max_samples]
+            targets = targets[:args.max_samples]
+            scores = scores[:args.max_samples]
 
         ood_scores = [score for score, target in zip(scores, targets) if target == 1]
         id_scores = [score for score, target in zip(scores, targets) if target == 0]
@@ -194,6 +213,7 @@ if __name__ == '__main__':
         aurocs.append(auroc)
         
         table['sample_idx'] = list(range(len(table['base_score'])))
+
         df = DataFrame(table)
 
         path = Path(f'mixup/logs/{datamodule}_{score_calculator}_gamma_{args.gamma}_m_{args.m}_n_{args.n}_r_{args.r}.xlsx')

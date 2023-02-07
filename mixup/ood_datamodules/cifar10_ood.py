@@ -43,7 +43,6 @@ class CIFAR10Wrapper(CIFAR10):
 class CIFAR10OODDataset(BaseOODDataModule):
     def __init__(
         self, 
-        shuffle: bool=True, 
         transform: Optional[Callable] = None,
         train_transform: Optional[Callable] = None,
     ):
@@ -55,7 +54,6 @@ class CIFAR10OODDataset(BaseOODDataModule):
             ['airplane', 'automobile', 'bird', 'cat', 'horse', 'ship', 'deer', 'dog', 'frog', 'truck'],
         ]
         self.num_known = 6
-        self.shuffle = shuffle
 
         self.cifar10 = CIFAR10Wrapper(
             root='./data', 
@@ -116,12 +114,12 @@ class CIFAR10OODDataset(BaseOODDataModule):
         seen_class_names = split[:self.num_known]
         return seen_class_names
     
-    def construct_loader(self, batch_size: int):
+    def construct_loader(self, batch_size: int, shuffle: bool = True):
         loader = DataLoader(
             self.cifar10, 
             batch_size=batch_size, 
             num_workers=2, 
-            shuffle=self.shuffle
+            shuffle=shuffle
         )
         return loader
     

@@ -144,8 +144,13 @@ class Caltech101OODDataset(BaseOODDataModule):
         given_images = torch.stack(given_images)
         return given_images
     
-    def construct_loader(self, batch_size: int):
-        loader = DataLoader(self.val, batch_size=batch_size, num_workers=2, shuffle=True)
+    def construct_loader(self, batch_size: int, shuffle: bool = True):
+        loader = DataLoader(
+            self.val, 
+            batch_size=batch_size, 
+            num_workers=2, 
+            shuffle=shuffle,
+        )
         return loader
     
     def __str__(self) -> str:

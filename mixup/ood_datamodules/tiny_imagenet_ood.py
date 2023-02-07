@@ -81,12 +81,12 @@ class TinyImageNetOODDataset(BaseOODDataModule):
         ]
         return torch.tensor(seen_class_idx)
     
-    def construct_loader(self, batch_size: int):
+    def construct_loader(self, batch_size: int, shuffle: bool = True):
         loader = DataLoader(
             self.tiny_imagenet, 
             batch_size=batch_size, 
             num_workers=2, 
-            shuffle=True
+            shuffle=shuffle,
         )
         return loader
     
