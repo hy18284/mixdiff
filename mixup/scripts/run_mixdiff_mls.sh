@@ -11,14 +11,13 @@ do
         TinyImageNetOODDataset 
     do
         python -m mixup.mixup_eval \
-            --config mixup/configs/mixdiff_msp_config.yaml \
             --n 15 \
-            --m 10 \
+            --m 15 \
             --r 7 \
+            --gamma 2.0 \
             --seed 0 \
-            --wandb_name paper_v1 \
-            --device 7 \
-            --gamma 1.0 \
+            --wandb_name val_caltech \
+            --device 6 \
             --score_calculator.class_path mixup.ood_score_calculators.$method \
             --score_calculator.init_args.batch_size 12288 \
             --datamodule.class_path mixup.ood_datamodules.$dataset

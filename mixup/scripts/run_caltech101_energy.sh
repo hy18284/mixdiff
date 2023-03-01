@@ -20,7 +20,7 @@ do
                         --device 1 \
                         --gamma $gamma \
                         --score_calculator.class_path mixup.ood_score_calculators.$method \
-                        --score_calculator.init_args.batch_size 8192 \
+                        --score_calculator.init_args.batch_size 1024 \
                         --score_calculator.init_args.utilize_mixup true \
                         --datamodule.class_path mixup.ood_datamodules.Caltech101OODDataset 
                 done

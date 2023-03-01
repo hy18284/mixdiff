@@ -1,16 +1,16 @@
 #!/bin/bash
 
-    # MixDiffMaxSofmaxProb \
-    # MixDiffEnergy \
-    # MixDiffMaxLogitScore 
-
-        # CIFAR10OODDataset \
-        # CIFARPlus10OODDataset \
-        # CIFARPlus50OODDataset \
 for method in \
-    MixDiffEntropy 
+    MixDiffEntropy \
+    MixDiffMaxSofmaxProb \
+    MixDiffEnergy \
+    MixDiffMaxLogitScore 
 do 
     for dataset in \
+        Caltech101OODDataset \
+        CIFAR10OODDataset \
+        CIFARPlus10OODDataset \
+        CIFARPlus50OODDataset \
         CIFAR100OODDataset \
         TinyImageNetOODDataset 
     do
@@ -20,7 +20,7 @@ do
             --m 15 \
             --r 7 \
             --seed 0 \
-            --wandb_name paper_v1 \
+            --wandb_name may_delete \
             --device 2 \
             --gamma 1.0 \
             --score_calculator.class_path mixup.ood_score_calculators.$method \
