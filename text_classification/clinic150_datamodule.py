@@ -15,6 +15,7 @@ class CLINIC150(Dataset):
         mode: str,
         path: str='data/clinc150/data_full.json',
         tokenizer_path: str = 'roberta-base',
+        add_oos: bool=False,
     ):
         super().__init__()
         self.data_path = path
@@ -34,7 +35,19 @@ class CLINIC150(Dataset):
             self.data = raw_data['test']
         else:
             ValueError
-    
+
+        if add_oos:
+            if mode == 'val':
+                self.data += raw_data['oos_val']
+            elif mode == 'train':
+                self.data += raw_data['oos_train']
+            elif mode =='test':
+                self.data += raw_data['oos_test']
+            else:
+                ValueError
+
+            self.intents.append('oos')
+        
     def __getitem__(self, idx):
         query, intent = self.data[idx]
         return {
