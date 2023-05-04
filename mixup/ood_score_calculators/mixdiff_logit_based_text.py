@@ -30,7 +30,7 @@ class MixDiffLogitBasedMixinText:
         self.tokenizer = AutoTokenizer.from_pretrained(backbone_name)
 
     def on_eval_start(self, seen_labels, given_images):
-        if self.selection_mode == 'euclidean':
+        if self.selection_mode == 'euclidean' or self.selection_mode == 'dot':
             given_images = list(itertools.chain.from_iterable(given_images))
             images_list = [
                 given_images[i : i + self.batch_size]
@@ -88,9 +88,14 @@ class MixDiffLogitBasedMixinText:
             max_indices = torch.argmax(logits, dim=-1)
             chosen_images = [given_images[idx] for idx in max_indices]
             return chosen_images
-        elif self.selection_mode == 'euclidean':
-            # (N, NC), (NC * M, NC) -> (N, NC * M) -> (N, M)
-            dists = torch.cdist(logits, self.id_logits, p=2)
+
+        elif self.selection_mode == 'euclidean' or self.selection_mode == 'dot':
+            if self.selection_mode == 'euclidean':
+                # (N, NC), (NC * M, NC) -> (N, NC * M) -> (N, M)
+                dists = torch.cdist(logits, self.id_logits, p=2)
+            if self.selection_mode == 'dot':
+                # (N, NC), (NC, NC * M) -> (N, NC * M) -> (N, M)
+                dists = -(logits @ self.id_logits.t())
             _, topk_indices = torch.topk(
                 dists, 
                 dim=1, 
@@ -138,6 +143,8 @@ class MixDiffLogitBasedMixinText:
             sel_mode = 'eucl'
         elif self.selection_mode == 'argmax':
             sel_mode = 'agmax'
+        elif self.selection_mode == 'dot':
+            sel_mode = 'dot'
 
         if not self.utilize_mixup:
             return f'{self.name}'
