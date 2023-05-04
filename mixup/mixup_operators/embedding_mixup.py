@@ -87,8 +87,6 @@ class EmbeddingMixup(BaseMixupOperator):
 
         x_input_ids, y_input_ids = self._interpolate(x_input_ids, y_input_ids)
 
-        y_input_ids = self.embedding(y_input_ids)
-        x_input_ids = self.embedding(x_input_ids)
         mixed = rate * x_input_ids + (1 - rate) * y_input_ids
         if self.similarity == 'dot':
             # (L, H) * (H, V) -> (L, V)
@@ -117,7 +115,7 @@ class EmbeddingMixup(BaseMixupOperator):
                     device=self.device
                 )
                 idx = torch.round(idx).to(torch.long)
-                return x_input_ids, y_input_ids[idx]
+                y_input_ids = y_input_ids[idx]
             elif len(y_input_ids) > len(x_input_ids):
                 idx = torch.linspace(
                     0, 
@@ -126,20 +124,28 @@ class EmbeddingMixup(BaseMixupOperator):
                     device=self.device
                 )
                 idx = torch.round(idx).to(torch.long)
-                return x_input_ids[idx], y_input_ids
-            else:
-                return x_input_ids, y_input_ids
+                x_input_ids = x_input_ids[idx]
 
         elif self.interploation == 'truncate':
             if len(x_input_ids) > len(y_input_ids):
-                return x_input_ids[:len(y_input_ids)], y_input_ids
+                x_input_ids = x_input_ids[:len(y_input_ids)]
             elif len(y_input_ids) > len(x_input_ids):
-                return x_input_ids, y_input_ids[:len(x_input_ids)]
-            else:
-                return x_input_ids, y_input_ids
-
-        else:
-            raise ValueError('Invalid interpolation method.')
+                y_input_ids = y_input_ids[:len(x_input_ids)]
         
+        x_input_ids = self.embedding(x_input_ids) 
+        y_input_ids = self.embedding(y_input_ids) 
+
+        if self.interploation == 'pad':
+            if len(x_input_ids) > len(y_input_ids):
+                y_paded = torch.zeros_like(x_input_ids)
+                y_paded[:len(y_input_ids)] = y_input_ids
+                y_input_ids = y_paded
+            elif len(y_input_ids) > len(x_input_ids):
+                x_paded = torch.zeros_like(y_input_ids)
+                x_paded[:len(x_input_ids)] = x_input_ids
+                x_input_ids = x_paded
+        
+        return x_input_ids, y_input_ids
+
     def __str__(self):
         return 'tkn_emb'
