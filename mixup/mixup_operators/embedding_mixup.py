@@ -61,10 +61,10 @@ class EmbeddingMixup(BaseMixupOperator):
         
         # (N * N * R) 
         target_mixup = [] 
-        for sample in samples:
-            for sample in samples:
+        for sample_x in samples:
+            for sample_y in samples:
                 mixup = [
-                    self.mixup(sample, sample, rate) 
+                    self.mixup(sample_x, sample_y, rate) 
                     for rate in rates
                 ]
                 target_mixup += mixup
@@ -91,11 +91,15 @@ class EmbeddingMixup(BaseMixupOperator):
         if self.similarity == 'dot':
             # (L, H) * (H, V) -> (L, V)
             mixed = mixed @ self.embedding.weight.t()
-            _, mixed = torch.max(mixed, dim=1)
+            mixed = torch.argmax(mixed, dim=1)
         elif self.similarity == 'cosine':
-            # (L, 1, H) * (V, H) -> (L, V)
-            torch.cosine_similarity(mixed.unsqueeze(1), self.embedding.weight, dim=1)
-            _, mixed = torch.max(mixed, dim=1)
+            # (L, 1, H) * (1, V, H) -> (L, V)
+            mixed = torch.cosine_similarity(
+                mixed.unsqueeze(1), 
+                self.embedding.weight.unsqueeze(0),
+                dim=2,
+            )
+            mixed = torch.argmax(mixed, dim=1)
             
         mixed = self.tokenizer.decode(mixed)
 

@@ -1,5 +1,6 @@
 import random
 import copy
+import itertools
 
 import torch
 import matplotlib.pyplot as plt
@@ -22,8 +23,10 @@ def parse_args():
     parser.add_argument('--n', type=int, default=10)
     parser.add_argument('--m', type=int, default=10)
     parser.add_argument('--r', type=int, default=3)
+    parser.add_argument('--r_ref', type=float, default=0)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--wandb_name', type=str, default='mixup_v1')
+    parser.add_argument('--wandb_project', type=str, default='ZOC')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--abs', action='store_true')
     parser.add_argument('--top_1', action='store_true')
@@ -38,6 +41,42 @@ def parse_args():
     args = parser.parse_args()
     classes = parser.instantiate_classes(args)
     return args, classes
+
+
+def log_mixup_samples(
+    known_mixup_table, 
+    unknown_mixup_table, 
+    known_mixup, 
+    unknown_mixup, 
+    images, 
+    chosen_images, 
+    rates, 
+    j,
+):
+    known_idx = np.random.randint(0, M)
+
+    # (N * M * N * R)
+    known_rows = zip(
+        itertools.repeat(chosen_images[0][known_idx], R),
+        itertools.repeat(images[1], R),
+        known_mixup[R * N * known_idx + R : R * N * known_idx + 2 * R],
+        rates.tolist(),
+        itertools.repeat(j, R),
+    )
+
+    for row in known_rows:
+        known_mixup_table.add_data(*row)
+
+    # (N * N * R)
+    unknown_rows = zip(
+        itertools.repeat(images[0], R),
+        itertools.repeat(images[1], R),
+        unknown_mixup[R : 2 * R],
+        rates.tolist(),
+        itertools.repeat(j, R),
+    )
+    for row in unknown_rows:
+        unknown_mixup_table.add_data(*row)
 
 
 if __name__ == '__main__':
@@ -63,12 +102,17 @@ if __name__ == '__main__':
     wandb.init(
         config=args,
         name=name,
-        project='ZOC',
+        project=args.wandb_project,
     )
     wandb.config.method = str(score_calculator)
     wandb.config.dataset = str(datamodule)
      
     aurocs = []
+    mixdiff_scores = []
+    known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
+    unknown_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
+    wandb.Table.MAX_ROWS = 200000
+
     for j, (seen_labels, seen_idx, given_images) in enumerate(
         datamodule.get_splits(n_samples_per_class=M, seed=args.seed)
     ):
@@ -78,16 +122,25 @@ if __name__ == '__main__':
             'seen_classes': seen_labels,
             'seen_idx': seen_idx.tolist(),
         })
+        
+        start = args.r_ref
+        end = 1.0 - start
+        
+        r_start = (end - start) / (R + 1)
+        r_end = end - start - r_start
 
-        r_start = 1.0 / (R + 1)
-        r_end = 1 - r_start
         rates = torch.linspace(r_start, r_end, R, device=device)
+        rates += start
+
         print(rates)
         targets = []
         scores = []
 
         loader = datamodule.construct_loader(batch_size=batch_size)
-        score_calculator.on_eval_start(copy.deepcopy(seen_labels))
+        score_calculator.on_eval_start(
+            copy.deepcopy(seen_labels),
+            copy.deepcopy(given_images),
+        )
         cur_num_samples = 0
 
         for i, (images, labels) in enumerate(tqdm(loader)):
@@ -106,6 +159,17 @@ if __name__ == '__main__':
                 )
                 
                 known_mixup, unknown_mixup = mixup_fn(chosen_images, images, rates) 
+                log_mixup_samples(
+                    known_mixup_table, 
+                    unknown_mixup_table, 
+                    known_mixup, 
+                    unknown_mixup, 
+                    images, 
+                    chosen_images, 
+                    rates, 
+                    j,
+                )
+
                 # (N * M * N * R * NC) -> (N, M, N, R, NC) -> (N, N, R, NC) -> (N * N * R * NC)
                 known_logits = score_calculator.process_mixup_images(known_mixup)
                 known_logits = known_logits.view(N, M, N, R, -1)
@@ -135,6 +199,7 @@ if __name__ == '__main__':
             base_scores = score_calculator.calculate_base_scores(**image_kwargs)
 
             if score_calculator.utilize_mixup:
+                mixdiff_scores += (args.gamma * dists).tolist()[:orig_n_samples]
                 dists = base_scores + args.gamma * dists
             else:
                 dists = base_scores
@@ -149,6 +214,18 @@ if __name__ == '__main__':
             
         score_calculator.on_eval_end()
 
+        if not score_calculator.utilize_mixup:
+            mixdiff_scores = itertools.repeat(0.0, len(scores))
+        table = wandb.Table(
+            columns=['id', 'ood_score','base_score', 'mixdiff_score', 'is_ood'],
+            data=[
+                (i, score, score - mixdiff_score, mixdiff_score, target)
+                for i, (score, mixdiff_score, target) 
+                in enumerate(zip(scores, mixdiff_scores, targets))
+            ]
+        )
+        wandb.log({f'ood_scores_{j}': table})
+
         ood_scores = [score for score, target in zip(scores, targets) if target == 1]
         id_scores = [score for score, target in zip(scores, targets) if target == 0]
         ood_mean = np.mean(ood_scores)
@@ -162,6 +239,11 @@ if __name__ == '__main__':
         wandb.log({'auroc': auroc})
         aurocs.append(auroc)
     
+    wandb.log({
+        'oracle_mixup': known_mixup_table,
+        'target_mixup': unknown_mixup_table,
+    })
+
     print('all auc scores:', aurocs)
     avg_auroc = np.mean(aurocs)
     auroc_std = np.std(aurocs)
