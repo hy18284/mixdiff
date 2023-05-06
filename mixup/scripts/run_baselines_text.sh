@@ -18,7 +18,7 @@ do
                 --r 3 \
                 --gamma 2.0 \
                 --seed 0 \
-                --wandb_name baseline \
+                --wandb_name cln_val \
                 --device 0 \
                 --model_path checkpoints/clinic150_bert \
                 --score_calculator.class_path mixup.ood_score_calculators.$method \
