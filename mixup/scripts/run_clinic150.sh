@@ -1,7 +1,10 @@
 #!/bin/bash
 
 for method in \
-    MixDiffEnergyText
+    MixDiffEnergyText \
+    MixDiffEntropyText \
+    MixDiffMaxLogitScoreText \
+    MixDiffMaxSofmaxProbText
 do 
     for dataset in \
         CLINIC150OODDataset
