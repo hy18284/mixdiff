@@ -1,7 +1,10 @@
 #!/bin/bash
 
 for method in \
-    MixDiffEntropyText
+    MixDiffEnergyText \
+    MixDiffEntropyText \
+    MixDiffMaxLogitScoreText \
+    MixDiffMaxSofmaxProbText
 do 
     for dataset in \
         CLINIC150OODDataset
@@ -9,13 +12,13 @@ do
         for mixup_fn in \
             EmbeddingMixup
         do
-            for gamma in 1.0 0.5 2.0
+            for gamma in 1.0
             do
-                for n in 15 10
+                for n in 15
                 do
-                    for m in 15 10
+                    for m in 15
                     do
-                        for r in 7 5
+                        for r in 7
                         do
                             for selection_mode in argmax
                             do

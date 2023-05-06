@@ -1,7 +1,10 @@
 #!/bin/bash
 
 for method in \
-    MixDiffEntropyText
+    MixDiffEnergyText \
+    MixDiffEntropyText \
+    MixDiffMaxLogitScoreText \
+    MixDiffMaxSofmaxProbText
 do 
     for dataset in \
         CLINIC150OODDataset
@@ -26,7 +29,9 @@ do
                 --datamodule.init_args.mode val \
                 --mixup_operator.class_path mixup.mixup_operators.$mixup_fn \
                 --mixup_operator.init_args.model_path roberta-base \
-                --mixup_operator.init_args.device 0
+                --mixup_operator.init_args.device 0 \
+                --mixup_operator.init_args.interpolation pad \
+                --mixup_operator.init_args.similarity dot
         done
     done
 done

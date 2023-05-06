@@ -1,7 +1,7 @@
 #!/bin/bash
 
 for method in \
-    MixDiffEntropyText
+    MixDiffEnergyText
 do 
     for dataset in \
         CLINIC150OODDataset
