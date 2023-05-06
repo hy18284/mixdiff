@@ -88,6 +88,7 @@ if __name__ == '__main__':
 
     torch.set_grad_enabled(False)
     random.seed(args.seed)
+    np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
     N, M, R = args.n, args.m, args.r
