@@ -16,6 +16,7 @@ class CLINIC150(Dataset):
         path: str='data/clinc150/data_full.json',
         tokenizer_path: str = 'roberta-base',
         add_oos: bool=False,
+        oos_only: bool=False,
     ):
         super().__init__()
         self.data_path = path
@@ -23,18 +24,22 @@ class CLINIC150(Dataset):
         with open(self.data_path) as f:
             raw_data = json.load(f)
         
-        self.intents = [sample[1] for sample in raw_data['train']]
-        self.intents = list(set(self.intents))
-        self.intents.sort()
+        if not oos_only:
+            self.intents = [sample[1] for sample in raw_data['train']]
+            self.intents = list(set(self.intents))
+            self.intents.sort()
 
-        if mode == 'val':
-            self.data = raw_data['val']
-        elif mode == 'train':
-            self.data = raw_data['train']
-        elif mode =='test':
-            self.data = raw_data['test']
+            if mode == 'val':
+                self.data = raw_data['val']
+            elif mode == 'train':
+                self.data = raw_data['train']
+            elif mode =='test':
+                self.data = raw_data['test']
+            else:
+                ValueError
         else:
-            ValueError
+            self.intents = []
+            self.data = []
 
         if add_oos:
             if mode == 'val':
