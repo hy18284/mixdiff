@@ -10,7 +10,7 @@ trainer:
     class_path: pytorch_lightning.loggers.wandb.WandbLogger
     init_args:
       name: top_classifier
-      project: ZOC_debug
+      project: ZOC
   callbacks:
     - class_path: pytorch_lightning.callbacks.early_stopping.EarlyStopping
       init_args:
@@ -65,4 +65,3 @@ data:
     batch_size: 128
     path: data/top/top-dataset-semantic-parsing
     tokenizer_path: bert-base-uncased
-# ckpt_path: null
