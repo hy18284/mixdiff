@@ -98,7 +98,7 @@ class TextClassifier(LightningModule):
         self.log('test_acc', acc)
 
         f1 = f1_score(labels.tolist(), preds.tolist(), average='weighted')
-        self.log('val_f1', f1)
+        self.log('test_f1', f1)
 
     def configure_optimizers(self) -> Any:
         optimizer = Adam(
