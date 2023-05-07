@@ -2,6 +2,8 @@ import json
 import pathlib
 import csv
 import copy
+import json
+import re
 
 import torch
 from torch.utils.data import (
@@ -16,7 +18,7 @@ from datasets import load_dataset
 from .clinic150_datamodule import CLINIC150
 
 
-class Hwu64(Dataset):
+class Snips(Dataset):
     def __init__(
         self,
         mode: str,
@@ -35,17 +37,21 @@ class Hwu64(Dataset):
 
         self.data = []
         if mode == 'test':
-            with open(pathlib.Path(self.path) / 'customer_testing.csv') as f:
-                for line in csv.DictReader(f, delimiter=','):
-                    intent = line['INTENT_NAME']
-                    query = line['UTTERANCES']
-                    self.data.append((query, intent))
+            pattern = "validate_*.json"
         else:
-            with open(pathlib.Path(self.path) / 'customer_training.csv') as f:
-                for line in csv.DictReader(f, delimiter=','):
-                    intent = line['INTENT_NAME']
-                    query = line['UTTERANCES']
+            pattern = "train_*_full.json"
+
+        self.data = []
+        for path in pathlib.Path(self.path).rglob(pattern):
+            with open(path, encoding="ISO-8859-1") as f:
+                data = json.load(f)
+                intent = next(iter(data))
+                for line in data[intent]:
+                    substrs = line['data']
+                    query = ''.join([substr['text'] for substr in substrs])
                     self.data.append((query, intent))
+
+        if mode != 'test':
             gen = torch.Generator().manual_seed(seed)
             val, train = random_split(
                 self.data, 
@@ -58,12 +64,24 @@ class Hwu64(Dataset):
                 self.data = val
        
         self.intents = [] 
-        with open(pathlib.Path(self.path) / 'customer_training.csv') as f:
-            for line in csv.DictReader(f, delimiter=','):
-                self.intents.append(line['INTENT_NAME'])
+        for path in pathlib.Path(self.path).rglob('train_*_full.json'):
+            with open(path, encoding="ISO-8859-1") as f:
+                data = json.load(f)
+                intent = next(iter(data))
+                self.intents.append(intent)
         
         self.intents = list(set(self.intents))
         self.intents.sort()
+
+        if beautify_intents:
+            self.intents = [
+                ' '.join(re.findall('[A-Z][^A-Z]*', intent))
+                for intent in self.intents
+            ]
+            self.data = [
+                (query, ' '.join(re.findall('[A-Z][^A-Z]*', intent)))
+                for query, intent in self.data
+            ]
 
         if self.add_oos:
             self.oos_data = CLINIC150(
@@ -73,16 +91,6 @@ class Hwu64(Dataset):
                 oos_only=True,
             )
             self.intents += self.oos_data.intents
-        
-        if beautify_intents:
-            self.intents = [
-                ' '.join(intent.split('_'))
-                for intent in self.intents
-            ]
-            self.data = [
-                (query, ' '.join(intent.split('_')))
-                for query, intent in self.data
-            ]
 
     def __getitem__(self, idx):
         if idx >= len(self.data):
@@ -120,12 +128,12 @@ class Hwu64(Dataset):
         return output
     
 
-class AcidDataModule(LightningDataModule):
+class SnipsDataModule(LightningDataModule):
     def __init__(
         self, 
         batch_size: int,
         tokenizer_path: str,
-        path: str='data/acid',
+        path: str='data/snips/nlu-benchmark/2017-06-custom-intent-engines',
         seed: int=42,
         val_ratio=0.1,
     ):
@@ -137,7 +145,7 @@ class AcidDataModule(LightningDataModule):
         self.val_ratio = val_ratio
 
     def setup(self, stage: str) -> None:
-        self.train = Hwu64(
+        self.train = Snips(
             mode='train', 
             tokenizer_path=self.tokenizer_path,
             add_oos=False,
@@ -146,7 +154,7 @@ class AcidDataModule(LightningDataModule):
             val_ratio = self.val_ratio,
             path=self.path,
         )
-        self.val = Hwu64(
+        self.val = Snips(
             mode='val', 
             tokenizer_path=self.tokenizer_path,
             add_oos=False,
@@ -155,7 +163,7 @@ class AcidDataModule(LightningDataModule):
             val_ratio = self.val_ratio,
             path=self.path,
         )
-        self.test = Hwu64(
+        self.test = Snips(
             mode='test', 
             tokenizer_path=self.tokenizer_path,
             add_oos=False,
