@@ -4,42 +4,47 @@ for method in \
     MixDiffMaxLogitScoreText
 do 
     for dataset in \
-        CLINIC150OODDataset
+        "CLINIC150OODDataset clinic150" \
+        "CLINIC150OODDatasetWiki clinic150" \
+        "TopOODDataset top" \
+        "Banking77OODDatasetClinicTest banking77" \
+        "Banking77OODDatasetClinicWiki banking77" \
+        "AcidOODDatasetClinicTest acid" \
+        "AcidOODDatasetClinicWiki acid" \
+        "SnipsOODDatasetClinicTest snips" \
+        "SnipsOODDatasetClinicWiki snips"
     do
         for mixup_fn in \
-            EmbeddingMixup
+            StringMixup
         do
-            for gamma in 1.0 0.5 2.0
+            for n in 10
             do
-                for n in 15 10
+                for m in 20
                 do
-                    for m in 15 10
+                    for r in 3
                     do
-                        for r in 7 5
+                        for gamma in 1.0 
                         do
                             for selection_mode in argmax
                             do
+                                set -- $dataset
                                 python -m mixup.mixup_eval_text \
                                     --n $n \
                                     --m $m \
                                     --r $r \
                                     --gamma $gamma \
-                                    --r_ref 0.25 \
+                                    --r_ref 0 \
                                     --seed 0 \
-                                    --wandb_name cln_val \
+                                    --wandb_name cln_tst \
                                     --wandb_project ZOC \
                                     --device 0 \
-                                    --model_path checkpoints/clinic150_bert \
+                                    --model_path "checkpoints/${2}_bert" \
                                     --score_calculator.class_path mixup.ood_score_calculators.$method \
-                                    --score_calculator.init_args.batch_size 4096 \
+                                    --score_calculator.init_args.batch_size 1000000000 \
                                     --score_calculator.init_args.selection_mode $selection_mode \
-                                    --datamodule.class_path mixup.ood_datamodules.$dataset \
-                                    --datamodule.init_args.mode val \
-                                    --mixup_operator.class_path mixup.mixup_operators.$mixup_fn \
-                                    --mixup_operator.init_args.model_path roberta-base \
-                                    --mixup_operator.init_args.device 0 \
-                                    --mixup_operator.init_args.interpolation pad \
-                                    --mixup_operator.init_args.similarity dot
+                                    --datamodule.class_path mixup.ood_datamodules.$1 \
+                                    --datamodule.init_args.mode test \
+                                    --mixup_operator.class_path mixup.mixup_operators.$mixup_fn
                             done
                         done
                     done

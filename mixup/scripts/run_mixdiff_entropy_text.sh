@@ -36,7 +36,7 @@ do
                                     --r_ref 0 \
                                     --seed 0 \
                                     --wandb_name cln_tst \
-                                    --wandb_project ZOC_debug \
+                                    --wandb_project ZOC \
                                     --device 0 \
                                     --model_path "checkpoints/${2}_bert" \
                                     --score_calculator.class_path mixup.ood_score_calculators.$method \
