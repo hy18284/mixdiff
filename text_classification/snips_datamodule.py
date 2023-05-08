@@ -99,9 +99,9 @@ class Snips(Dataset):
 
     def __getitem__(self, idx):
         if idx >= len(self.data):
-            query, intent = self.oos_data[idx - len(self.data)]
+            sample = self.oos_data[idx - len(self.data)]
             return {
-                'query': query.strip(),
+                'query': sample['query'].strip(),
                 'label': len(self.data)
             }
         else:
