@@ -37,7 +37,6 @@ class Top(Dataset):
         else:
             raise ValueError()
             
-        
         self.data = []
         with open(pathlib.Path(self.data_path) / file_name) as f:
             for line in csv.reader(f, delimiter='\t'):

@@ -18,7 +18,7 @@ do
                 --r 3 \
                 --gamma 2.0 \
                 --seed 0 \
-                --wandb_name cln_val \
+                --wandb_name cln_test \
                 --device 0 \
                 --model_path checkpoints/clinic150_bert \
                 --score_calculator.class_path mixup.ood_score_calculators.$method \
@@ -26,7 +26,7 @@ do
                 --score_calculator.init_args.utilize_mixup false \
                 --score_calculator.init_args.add_base_score true \
                 --datamodule.class_path mixup.ood_datamodules.$dataset \
-                --datamodule.init_args.mode val \
+                --datamodule.init_args.mode test \
                 --mixup_operator.class_path mixup.mixup_operators.$mixup_fn \
                 --mixup_operator.init_args.model_path roberta-base \
                 --mixup_operator.init_args.device 0 \

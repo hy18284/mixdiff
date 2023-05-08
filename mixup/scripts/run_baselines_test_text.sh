@@ -1,29 +1,32 @@
 #!/bin/bash
 
 for method in \
-    MixDiffEntropyText
+    MixDiffEntropyText \
+    MixDiffMaxSofmaxProbText \
+    MixDiffEnergyText \
+    MixDiffMaxLogitScoreText 
 do 
     for dataset in \
-        "CLINIC150OODDataset clinic150" \
-        "CLINIC150OODDatasetWiki clinic150" \
-        "TopOODDataset top" \
         "Banking77OODDatasetClinicTest banking77" \
         "Banking77OODDatasetClinicWiki banking77" \
         "AcidOODDatasetClinicTest acid" \
         "AcidOODDatasetClinicWiki acid" \
         "SnipsOODDatasetClinicTest snips" \
-        "SnipsOODDatasetClinicWiki snips"
+        "SnipsOODDatasetClinicWiki snips" \
+        "CLINIC150OODDataset clinic150" \
+        "CLINIC150OODDatasetWiki clinic150" \
+        "TopOODDataset top" 
     do
         for mixup_fn in \
             StringMixup
         do
-            for n in 10
+            for n in 1000
             do
-                for m in 20
+                for m in 1
                 do
-                    for r in 7
+                    for r in 1
                     do
-                        for gamma in 1.0 
+                        for gamma in 0.0
                         do
                             for selection_mode in argmax
                             do
@@ -40,8 +43,10 @@ do
                                     --device 0 \
                                     --model_path "checkpoints/${2}_bert" \
                                     --score_calculator.class_path mixup.ood_score_calculators.$method \
-                                    --score_calculator.init_args.batch_size 1000000000 \
+                                    --score_calculator.init_args.batch_size 1000000 \
                                     --score_calculator.init_args.selection_mode $selection_mode \
+                                    --score_calculator.init_args.utilize_mixup false \
+                                    --score_calculator.init_args.add_base_score true \
                                     --datamodule.class_path mixup.ood_datamodules.$1 \
                                     --datamodule.init_args.mode test \
                                     --mixup_operator.class_path mixup.mixup_operators.$mixup_fn

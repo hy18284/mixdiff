@@ -2,6 +2,9 @@ import json
 import pathlib
 import csv
 import copy
+from typing import (
+    Optional,
+)
 
 import torch
 from torch.utils.data import (
@@ -21,16 +24,15 @@ class Banking77(Dataset):
         self,
         mode: str,
         tokenizer_path: str,
-        add_oos: bool=False,
+        oos_data: Optional[str]=None,
         beautify_intents: bool=True,
         val_ratio: float=0.1,
         seed: int=42,
     ):
         super().__init__()
         self.val_ratio = val_ratio
-        self.add_oos = add_oos
+        self.oos_data = oos_data
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-
 
         if mode == 'test':
             self.data = load_dataset('PolyAI/banking77', split='test')
@@ -50,20 +52,22 @@ class Banking77(Dataset):
         dataset = load_dataset('PolyAI/banking77', split='train')
         self.intents = copy.deepcopy(dataset.features['label'].names)
 
-        if self.add_oos:
-            self.oos_data = CLINIC150(
-                mode='test',
-                tokenizer_path=tokenizer_path,
-                add_oos=True,
-                oos_only=True,
-            )
-            self.intents += self.oos_data.intents
-        
         if beautify_intents:
             self.intents = [
                 ' '.join(intent.split('_'))
                 for intent in self.intents
             ]
+
+        if self.oos_data is not None:
+            self.oos_data = CLINIC150(
+                mode='test',
+                tokenizer_path=tokenizer_path,
+                add_oos=True,
+                oos_only=True,
+                beautify_intents=beautify_intents,
+                wiki_for_test=self.oos_data == 'clinic_wiki',
+            )
+            self.intents += self.oos_data.intents
 
     def __getitem__(self, idx):
         if idx >= len(self.data):
@@ -81,7 +85,7 @@ class Banking77(Dataset):
             }
     
     def __len__(self):
-        if self.add_oos:
+        if self.oos_data:
             return len(self.data) + len(self.oos_data)
         else:
             return len(self.data)
@@ -120,7 +124,7 @@ class Banking77DataModule(LightningDataModule):
         self.train = Banking77(
             mode='train', 
             tokenizer_path=self.tokenizer_path,
-            add_oos=False,
+            oos_data=False,
             beautify_intents=True,
             seed=self.seed,
             val_ratio = self.val_ratio,
@@ -128,7 +132,7 @@ class Banking77DataModule(LightningDataModule):
         self.val = Banking77(
             mode='val', 
             tokenizer_path=self.tokenizer_path,
-            add_oos=False,
+            oos_data=False,
             beautify_intents=True,
             seed=self.seed,
             val_ratio = self.val_ratio,
@@ -136,7 +140,7 @@ class Banking77DataModule(LightningDataModule):
         self.test = Banking77(
             mode='test', 
             tokenizer_path=self.tokenizer_path,
-            add_oos=False,
+            oos_data=False,
             beautify_intents=True,
             seed=self.seed,
         )

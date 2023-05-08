@@ -1,5 +1,6 @@
 import json
 import torch
+import pathlib
 
 from torch.utils.data import (
     Dataset,
@@ -13,33 +14,42 @@ class CLINIC150(Dataset):
     def __init__(
         self,
         mode: str,
-        path: str='data/clinc150/data_full.json',
+        path: str='data/clinc150/',
         tokenizer_path: str = 'roberta-base',
         add_oos: bool=False,
         oos_only: bool=False,
+        wiki_for_test: bool=False,
+        beautify_intents: bool=True,
     ):
         super().__init__()
-        self.data_path = path
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-        with open(self.data_path) as f:
+        self.data_path = pathlib.Path(path)
+        self.wiki_for_test = wiki_for_test
+
+        if oos_only:
+            assert add_oos
+
+        with open(self.data_path / 'data_full.json') as f:
             raw_data = json.load(f)
-        
+
+        self.data = []
+        self.intents = []
         if not oos_only:
+            with open(self.data_path / 'data_full.json') as f:
+                raw_data = json.load(f)
+
             self.intents = [sample[1] for sample in raw_data['train']]
             self.intents = list(set(self.intents))
             self.intents.sort()
 
             if mode == 'val':
-                self.data = raw_data['val']
+                self.data += raw_data['val']
             elif mode == 'train':
-                self.data = raw_data['train']
+                self.data += raw_data['train']
             elif mode =='test':
-                self.data = raw_data['test']
+                self.data += raw_data['test']
             else:
                 ValueError
-        else:
-            self.intents = []
-            self.data = []
 
         if add_oos:
             if mode == 'val':
@@ -47,11 +57,38 @@ class CLINIC150(Dataset):
             elif mode == 'train':
                 self.data += raw_data['oos_train']
             elif mode =='test':
-                self.data += raw_data['oos_test']
+                self.data += self._read_test_oos()
             else:
                 ValueError
-
+            
             self.intents.append('oos')
+        
+        if beautify_intents:
+            self.intents = [
+                ' '.join(intent.split('_'))
+                for intent in self.intents
+            ]
+            self.data = [
+                (query, ' '.join(intent.split('_')))
+                for query, intent in self.data
+            ]
+
+    def _read_test_oos(self):
+        with open(self.data_path / 'data_full.json') as f:
+            raw_data = json.load(f)
+            data = raw_data['oos_test']
+
+        if self.wiki_for_test:
+            with open(self.data_path / 'binary_wiki_aug.json') as f:
+                raw_data = json.load(f)
+            
+            raw_data = [
+                [query, intent] for query, intent
+                in raw_data['train'] if intent == 'oos'
+            ] 
+            data += raw_data
+
+        return data
         
     def __getitem__(self, idx):
         query, intent = self.data[idx]
@@ -84,7 +121,7 @@ class CLINIC150DataModule(LightningDataModule):
         self, 
         batch_size: int,
         tokenizer_path: str,
-        path: str='data/clinc150/data_full.json',
+        path: str='data/clinc150',
     ):
         super().__init__()
         self.data_path = path

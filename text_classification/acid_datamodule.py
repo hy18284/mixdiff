@@ -2,6 +2,9 @@ import json
 import pathlib
 import csv
 import copy
+from typing import (
+    Optional,
+)
 
 import torch
 from torch.utils.data import (
@@ -22,14 +25,14 @@ class Acid(Dataset):
         mode: str,
         tokenizer_path: str,
         path: str='data/acid',
-        add_oos: bool=False,
+        oos_data: Optional[str]=None,
         beautify_intents: bool=True,
         val_ratio: float=0.1,
         seed: int=42,
     ):
         super().__init__()
         self.val_ratio = val_ratio
-        self.add_oos = add_oos
+        self.oos_data = oos_data
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
         self.path = path
 
@@ -65,15 +68,6 @@ class Acid(Dataset):
         self.intents = list(set(self.intents))
         self.intents.sort()
 
-        if self.add_oos:
-            self.oos_data = CLINIC150(
-                mode='test',
-                tokenizer_path=tokenizer_path,
-                add_oos=True,
-                oos_only=True,
-            )
-            self.intents += self.oos_data.intents
-        
         if beautify_intents:
             self.intents = [
                 ' '.join(intent.split('_'))
@@ -83,6 +77,17 @@ class Acid(Dataset):
                 (query, ' '.join(intent.split('_')))
                 for query, intent in self.data
             ]
+
+        if self.oos_data is not None:
+            self.oos_data = CLINIC150(
+                mode='test',
+                tokenizer_path=tokenizer_path,
+                add_oos=True,
+                oos_only=True,
+                wiki_for_test=self.oos_data == 'clinic_wiki',
+                beautify_intents=beautify_intents,
+            )
+            self.intents += self.oos_data.intents
 
     def __getitem__(self, idx):
         if idx >= len(self.data):
@@ -99,7 +104,7 @@ class Acid(Dataset):
             }
     
     def __len__(self):
-        if self.add_oos:
+        if self.oos_data:
             return len(self.data) + len(self.oos_data)
         else:
             return len(self.data)
@@ -140,7 +145,7 @@ class AcidDataModule(LightningDataModule):
         self.train = Acid(
             mode='train', 
             tokenizer_path=self.tokenizer_path,
-            add_oos=False,
+            oos_data=False,
             beautify_intents=True,
             seed=self.seed,
             val_ratio = self.val_ratio,
@@ -149,7 +154,7 @@ class AcidDataModule(LightningDataModule):
         self.val = Acid(
             mode='val', 
             tokenizer_path=self.tokenizer_path,
-            add_oos=False,
+            oos_data=False,
             beautify_intents=True,
             seed=self.seed,
             val_ratio = self.val_ratio,
@@ -158,7 +163,7 @@ class AcidDataModule(LightningDataModule):
         self.test = Acid(
             mode='test', 
             tokenizer_path=self.tokenizer_path,
-            add_oos=False,
+            oos_data=False,
             beautify_intents=True,
             seed=self.seed,
             path=self.path,

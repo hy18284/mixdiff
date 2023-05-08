@@ -4,6 +4,9 @@ import csv
 import copy
 import json
 import re
+from typing import (
+    Optional,
+)
 
 import torch
 from torch.utils.data import (
@@ -24,14 +27,14 @@ class Snips(Dataset):
         mode: str,
         tokenizer_path: str,
         path: str='data/snips/nlu-benchmark/2017-06-custom-intent-engines',
-        add_oos: bool=False,
+        oos_data: Optional[str]=None,
         beautify_intents: bool=True,
         val_ratio: float=0.1,
         seed: int=42,
     ):
         super().__init__()
         self.val_ratio = val_ratio
-        self.add_oos = add_oos
+        self.oos_data = oos_data
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
         self.path = path
 
@@ -83,12 +86,14 @@ class Snips(Dataset):
                 for query, intent in self.data
             ]
 
-        if self.add_oos:
+        if self.oos_data is not None:
             self.oos_data = CLINIC150(
                 mode='test',
                 tokenizer_path=tokenizer_path,
                 add_oos=True,
                 oos_only=True,
+                wiki_for_test=self.oos_data == 'clinic_wiki',
+                beautify_intents=beautify_intents,
             )
             self.intents += self.oos_data.intents
 
@@ -107,7 +112,7 @@ class Snips(Dataset):
             }
     
     def __len__(self):
-        if self.add_oos:
+        if self.oos_data:
             return len(self.data) + len(self.oos_data)
         else:
             return len(self.data)
@@ -148,7 +153,7 @@ class SnipsDataModule(LightningDataModule):
         self.train = Snips(
             mode='train', 
             tokenizer_path=self.tokenizer_path,
-            add_oos=False,
+            oos_data=False,
             beautify_intents=True,
             seed=self.seed,
             val_ratio = self.val_ratio,
@@ -157,7 +162,7 @@ class SnipsDataModule(LightningDataModule):
         self.val = Snips(
             mode='val', 
             tokenizer_path=self.tokenizer_path,
-            add_oos=False,
+            oos_data=False,
             beautify_intents=True,
             seed=self.seed,
             val_ratio = self.val_ratio,
@@ -166,7 +171,7 @@ class SnipsDataModule(LightningDataModule):
         self.test = Snips(
             mode='test', 
             tokenizer_path=self.tokenizer_path,
-            add_oos=False,
+            oos_data=False,
             beautify_intents=True,
             seed=self.seed,
             path=self.path,
