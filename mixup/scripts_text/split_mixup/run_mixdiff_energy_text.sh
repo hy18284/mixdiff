@@ -1,7 +1,7 @@
 #!/bin/bash
 
 for method in \
-    MixDiffEntropyText
+    MixDiffEnergyText
 do 
     for dataset in \
         "CLINIC150OODDataset clinic150" \
@@ -15,15 +15,15 @@ do
         "SnipsOODDatasetClinicWiki snips"
     do
         for mixup_fn in \
-            StringMixup
+            FrontMixup
         do
-            for n in 2
+            for n in 10
             do
-                for m in 2
+                for m in 20
                 do
-                    for r in 2
+                    for r in 7
                     do
-                        for gamma in 1.0 
+                        for gamma in 2
                         do
                             for selection_mode in argmax
                             do
@@ -36,12 +36,11 @@ do
                                     --r_ref 0 \
                                     --seed 0 \
                                     --wandb_name cln_tst \
-                                    --wandb_project ZOC_debug \
+                                    --wandb_project ZOC \
                                     --device 0 \
-                                    --max_samples 200 \
                                     --model_path "checkpoints/${2}_bert" \
                                     --score_calculator.class_path mixup.ood_score_calculators.$method \
-                                    --score_calculator.init_args.batch_size 258 \
+                                    --score_calculator.init_args.batch_size 1000000000 \
                                     --score_calculator.init_args.selection_mode $selection_mode \
                                     --datamodule.class_path mixup.ood_datamodules.$1 \
                                     --datamodule.init_args.mode test \
@@ -54,14 +53,3 @@ do
         done
     done
 done
-                                    # --mixup_operator.init_args.model_path roberta-base \
-                                    # --mixup_operator.init_args.device 0 \
-                                    # --mixup_operator.init_args.interpolation pad \
-                                    # --mixup_operator.init_args.similarity dot
-
-                                    # --score_calculator.init_args.utilize_mixup false \
-                                    # --score_calculator.init_args.add_base_score true \
-
-        # CLINIC150OODDataset \
-        # "AcidOODDataset acid"
-                                    # --max_samples 300 \
