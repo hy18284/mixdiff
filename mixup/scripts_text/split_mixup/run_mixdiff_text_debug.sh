@@ -9,9 +9,9 @@ do
         for mixup_fn in \
             SplitMixup
         do
-            for n in 10
+            for n in 15
             do
-                for m in 10
+                for m in 15
                 do
                     for r in 7
                     do
@@ -30,6 +30,7 @@ do
                                     --wandb_name cln_val \
                                     --wandb_project ZOC_debug \
                                     --device 0 \
+                                    --max_samples 1000 \
                                     --model_path "checkpoints/${2}_bert" \
                                     --score_calculator.class_path mixup.ood_score_calculators.$method \
                                     --score_calculator.init_args.batch_size 258 \

@@ -15,15 +15,15 @@ do
         "SnipsOODDatasetClinicWiki snips"
     do
         for mixup_fn in \
-            FrontMixup
+            SplittMixup
         do
-            for n in 10
+            for n in 20
             do
                 for m in 20
                 do
-                    for r in 3
+                    for r in 7
                     do
-                        for gamma in 1.0 
+                        for gamma in 2.0 
                         do
                             for selection_mode in argmax
                             do
@@ -40,7 +40,7 @@ do
                                     --device 0 \
                                     --model_path "checkpoints/${2}_bert" \
                                     --score_calculator.class_path mixup.ood_score_calculators.$method \
-                                    --score_calculator.init_args.batch_size 1000000000 \
+                                    --score_calculator.init_args.batch_size 10000 \
                                     --score_calculator.init_args.selection_mode $selection_mode \
                                     --datamodule.class_path mixup.ood_datamodules.$1 \
                                     --datamodule.init_args.mode test \

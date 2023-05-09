@@ -1,33 +1,27 @@
 #!/bin/bash
 
 for method in \
-    MixDiffEnergyText
+    MixDiffEnergyText \
+    MixDiffEntropyText \
+    MixDiffMaxLogitScoreText \
+    MixDiffMaxSofmaxProbText
 do 
     for dataset in \
-        "CLINIC150OODDataset clinic150" \
-        "CLINIC150OODDatasetWiki clinic150" \
-        "TopOODDataset top" \
-        "Banking77OODDatasetClinicTest banking77" \
-        "Banking77OODDatasetClinicWiki banking77" \
-        "AcidOODDatasetClinicTest acid" \
-        "AcidOODDatasetClinicWiki acid" \
-        "SnipsOODDatasetClinicTest snips" \
-        "SnipsOODDatasetClinicWiki snips"
+        CLINIC150OODDataset
     do
         for mixup_fn in \
-            SplitMixup
+            CutMixup
         do
-            for n in 10
+            for gamma in 1.0 0.5 2.0
             do
-                for m in 20
+                for n in 7 5 3
                 do
-                    for r in 7
+                    for m in 7 5 3
                     do
-                        for gamma in 2
+                        for r in 7 5 3
                         do
-                            for selection_mode in argmax
+                            for selection_mode in argmax euclidean dot
                             do
-                                set -- $dataset
                                 python -m mixup.mixup_eval_text \
                                     --n $n \
                                     --m $m \
@@ -35,15 +29,15 @@ do
                                     --gamma $gamma \
                                     --r_ref 0 \
                                     --seed 0 \
-                                    --wandb_name cln_tst \
+                                    --wandb_name cln_val \
                                     --wandb_project ZOC \
                                     --device 0 \
-                                    --model_path "checkpoints/${2}_bert" \
+                                    --model_path checkpoints/clinic150_bert \
                                     --score_calculator.class_path mixup.ood_score_calculators.$method \
-                                    --score_calculator.init_args.batch_size 1000000000 \
+                                    --score_calculator.init_args.batch_size 10000000 \
                                     --score_calculator.init_args.selection_mode $selection_mode \
-                                    --datamodule.class_path mixup.ood_datamodules.$1 \
-                                    --datamodule.init_args.mode test \
+                                    --datamodule.class_path mixup.ood_datamodules.$dataset \
+                                    --datamodule.init_args.mode val \
                                     --mixup_operator.class_path mixup.mixup_operators.$mixup_fn
                             done
                         done

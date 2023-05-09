@@ -15,7 +15,7 @@ do
         "SnipsOODDatasetClinicWiki snips"
     do
         for mixup_fn in \
-            FrontMixup
+            SplitMixup
         do
             for n in 20
             do

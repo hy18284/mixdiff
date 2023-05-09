@@ -1,7 +1,7 @@
 #!/bin/bash
 
 for method in \
-    MixDiffEnergyText
+    MixDiffMaxSofmaxProbText
 do 
     for dataset in \
         "CLINIC150OODDataset clinic150" \
@@ -15,15 +15,15 @@ do
         "SnipsOODDatasetClinicWiki snips"
     do
         for mixup_fn in \
-            SplitMixup
+            CutMixup
         do
-            for n in 10
+            for n in 20
             do
-                for m in 20
+                for m in 5
                 do
                     for r in 7
                     do
-                        for gamma in 2
+                        for gamma in 1.0 
                         do
                             for selection_mode in argmax
                             do
