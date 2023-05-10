@@ -1,7 +1,9 @@
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 from typing import (
     List,
     Tuple,
+    Optional,
+    Any,
 )
 
 
@@ -10,8 +12,10 @@ class BaseMixupOperator(ABC):
     def __call__(
         self, 
         oracle: List[List[str]], 
-        samples: List[str], 
-        rates: List[str]
+        references: List[str],
+        targets: List[str], 
+        rates: List[str],
+        use_registered_state: bool=False,
     ) -> Tuple[List[List[List[List[str]]]], List[List[List[str]]]]:
         """Performs mixup and returns oracle, in-batch mixed samples
 
@@ -30,3 +34,17 @@ class BaseMixupOperator(ABC):
     @abstractmethod
     def __str__(self):
         pass
+
+    def unregister_state(self):
+        pass
+    
+    def get_state(
+        self,
+        oracle: Optional[List[List[str]]] = None, 
+        references: Optional[List[str]] = None,
+        targets: Optional[List[str]] = None, 
+        rates: Optional[List[str]] = None,
+        state: Optional[Any] = None
+    ):
+        pass
+    

@@ -3,6 +3,8 @@ from abc import (
     abstractmethod,
 )
 
+from ..mixup_operators import BaseMixupOperator
+
 
 class OODScoreCalculator(ABC):
     utilize_mixup = True
@@ -11,7 +13,14 @@ class OODScoreCalculator(ABC):
     def load_model(self, backbone_name, device):
         pass
 
-    def on_eval_start(self, seen_labels):
+    def on_eval_start(
+        self, 
+        seen_labels, 
+        given_images, 
+        mixup_fn: BaseMixupOperator,
+        ref_images,
+        rates,
+    ):
         pass
 
     def on_eval_end(self):
@@ -59,3 +68,10 @@ class OODScoreCalculator(ABC):
     def __str__(self) -> str:
         pass
 
+    @property
+    def ref_mode(self) -> str:
+        return self._ref_mode
+
+    @ref_mode.setter
+    def ref_mode(self, ref_mode: str) -> str:
+        self._ref_mode = ref_mode

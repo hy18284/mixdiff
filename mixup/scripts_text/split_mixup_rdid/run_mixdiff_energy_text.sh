@@ -38,6 +38,7 @@ do
                                     --wandb_name cln_tst \
                                     --wandb_project ZOC \
                                     --device 0 \
+                                    --ref_mode 'rand_id' \
                                     --model_path "checkpoints/${2}_bert" \
                                     --score_calculator.class_path mixup.ood_score_calculators.$method \
                                     --score_calculator.init_args.batch_size 1000000000 \

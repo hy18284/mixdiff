@@ -1,8 +1,10 @@
 import random
 from collections import defaultdict
+import itertools
 
 from torch.utils.data import DataLoader
 import torch
+import numpy as np
 
 from .base_ood_datamodule import BaseOODDataModule
 from text_classification.clinic150_datamodule import CLINIC150
@@ -14,7 +16,9 @@ class CLINIC150OODDataset(BaseOODDataModule):
         mode: str,
         data_path: str='data/clinc150',
         tokenizer_path: str = 'bert-base-uncased',
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.mode = mode
         self.data_path = data_path
         self.tokenizer_path = tokenizer_path
@@ -34,32 +38,75 @@ class CLINIC150OODDataset(BaseOODDataModule):
             add_oos=False,
         )
 
-    def get_splits(self, n_samples_per_class: int, seed: int):
+    def get_splits(
+        self, 
+        n_samples_per_class: int, 
+        seed: int, 
+        n_ref_samples,
+    ):
+        given_images, ref_images = self.sample_given_images(
+            n_samples_per_class, 
+            seed, 
+            n_ref_samples,
+        )
+        if self.ref_mode == 'oracle':
+            ref_images = given_images
+        elif self.ref_mode == 'rand_id':
+            assert ref_images is not None
+        elif self.ref_mode == 'in_batch':
+            ref_images = None
+
         yield (
             self.train_dataset.intents,
             torch.tensor(range(len(self.train_dataset.intents))),
-            self.sample_given_images(n_samples_per_class, seed)
+            given_images,
+            ref_images,
         )
 
     def sample_given_images(
         self, 
         n_samples_per_class: int,
         seed: int,
+        n_ref_samples: int = None,
     ):
         label_2_samples = defaultdict(list) 
         for pair in self.train_dataset:
             sample, label = pair['query'], pair['label']
             label_2_samples[label].append(sample)
+
+        if n_ref_samples is not None:
+            n_ref_per_class = n_ref_samples / len(label_2_samples)
+            n_ref_per_class = int(np.ceil(n_ref_per_class))
+        else:
+            n_ref_per_class = 0
             
         given_images = []
         for label in range(len(self.train_dataset.intents)):
             images = random.Random(seed).choices(
                 label_2_samples[label], 
-                k=n_samples_per_class
+                k=n_samples_per_class + n_ref_per_class
             )
             given_images.append(images)
+
+        if n_ref_samples is not None:
+            ref_images = [
+                given[n_samples_per_class:] for given
+                in given_images
+            ]
+            ref_images = list(itertools.chain.from_iterable(ref_images))
+            ref_images = random.Random(seed).choices(
+                ref_images, 
+                k=n_ref_samples
+            )
+        else:
+            ref_images = None
         
-        return given_images
+        given_images = [
+            given[:n_samples_per_class] for given
+            in given_images
+        ]
+
+        return given_images, ref_images
     
     def construct_loader(self, batch_size: int, shuffle: bool = True):
 

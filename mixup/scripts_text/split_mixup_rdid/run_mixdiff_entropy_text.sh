@@ -1,7 +1,7 @@
 #!/bin/bash
 
 for method in \
-    MixDiffMaxSofmaxProbText
+    MixDiffEntropyText
 do 
     for dataset in \
         "CLINIC150OODDataset clinic150" \
@@ -17,9 +17,9 @@ do
         for mixup_fn in \
             SplitMixup
         do
-            for n in 20
+            for n in 10
             do
-                for m in 5
+                for m in 20
                 do
                     for r in 7
                     do
@@ -38,6 +38,7 @@ do
                                     --wandb_name cln_tst \
                                     --wandb_project ZOC \
                                     --device 0 \
+                                    --ref_mode 'rand_id' \
                                     --model_path "checkpoints/${2}_bert" \
                                     --score_calculator.class_path mixup.ood_score_calculators.$method \
                                     --score_calculator.init_args.batch_size 1000000000 \

@@ -16,6 +16,7 @@ from jsonargparse import (
 from .ood_score_calculators.ood_score_calculator import OODScoreCalculator
 from .ood_datamodules.base_ood_datamodule import BaseOODDataModule
 from .mixup_operators.base_mixup_operator import BaseMixupOperator
+from .utils import log_mixup_samples
 
 
 def parse_args():
@@ -34,6 +35,7 @@ def parse_args():
     parser.add_argument('--gamma', type=float, default=1.0)
     parser.add_argument('--max_samples', type=int, default=None, required=False)
     parser.add_argument('--model_path', type=str)
+    parser.add_argument('--ref_mode', type=str, default='in_batch')
     parser.add_subclass_arguments(OODScoreCalculator, 'score_calculator')
     parser.add_subclass_arguments(BaseOODDataModule, 'datamodule')
     parser.add_subclass_arguments(BaseMixupOperator, 'mixup_operator')
@@ -44,47 +46,14 @@ def parse_args():
     return args, classes
 
 
-def log_mixup_samples(
-    known_mixup_table, 
-    unknown_mixup_table, 
-    known_mixup, 
-    unknown_mixup, 
-    images, 
-    chosen_images, 
-    rates, 
-    j,
-):
-    known_idx = np.random.randint(0, M)
-
-    # (N * M * N * R)
-    known_rows = zip(
-        itertools.repeat(chosen_images[0][known_idx], R),
-        itertools.repeat(images[1], R),
-        known_mixup[R * N * known_idx + R : R * N * known_idx + 2 * R],
-        rates.tolist(),
-        itertools.repeat(j, R),
-    )
-
-    for row in known_rows:
-        known_mixup_table.add_data(*row)
-
-    # (N * N * R)
-    unknown_rows = zip(
-        itertools.repeat(images[0], R),
-        itertools.repeat(images[1], R),
-        unknown_mixup[R : 2 * R],
-        rates.tolist(),
-        itertools.repeat(j, R),
-    )
-    for row in unknown_rows:
-        unknown_mixup_table.add_data(*row)
-
-
 if __name__ == '__main__':
     args, classes = parse_args()
     score_calculator: OODScoreCalculator = classes['score_calculator']
     datamodule: BaseOODDataModule = classes['datamodule']
     mixup_fn: BaseMixupOperator = classes['mixup_operator']
+
+    datamodule.ref_mode = args.ref_mode
+    score_calculator.ref_mode = args.ref_mode
 
     torch.set_grad_enabled(False)
     random.seed(args.seed)
@@ -98,9 +67,17 @@ if __name__ == '__main__':
     score_calculator.load_model(args.model_path, device)
     
     if score_calculator.utilize_mixup: 
-        name=f'{args.wandb_name}_{score_calculator}_{datamodule}_{mixup_fn}'
+        if args.ref_mode == 'in_batch':
+            ref = 't'
+        elif args.ref_mode == 'oracle':
+            ref = 'o'
+        elif args.ref_mode == 'rand_id':
+            ref = 'i'
+
+        name=f'{args.wandb_name}_{score_calculator}_{ref}_{datamodule}_{mixup_fn}'
     else:
         name=f'{args.wandb_name}_{score_calculator}_{datamodule}'
+
     wandb.init(
         config=args,
         name=name,
@@ -116,8 +93,12 @@ if __name__ == '__main__':
     unknown_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
     wandb.Table.MAX_ROWS = 200000
 
-    for j, (seen_labels, seen_idx, given_images) in enumerate(
-        datamodule.get_splits(n_samples_per_class=M, seed=args.seed)
+    for j, (seen_labels, seen_idx, given_images, ref_images) in enumerate(
+        datamodule.get_splits(
+            n_samples_per_class=M, 
+            seed=args.seed, 
+            n_ref_samples=N
+        )
     ):
         seen_idx = seen_idx.to(device) 
 
@@ -140,9 +121,14 @@ if __name__ == '__main__':
         scores = []
 
         loader = datamodule.construct_loader(batch_size=batch_size)
-        score_calculator.on_eval_start(
-            copy.deepcopy(seen_labels),
-            copy.deepcopy(given_images),
+        mixup_kwargs = score_calculator.on_eval_start(
+            seen_labels=copy.deepcopy(seen_labels),
+            given_images=copy.deepcopy(given_images),
+            mixup_fn=mixup_fn,
+            ref_images=copy.deepcopy(ref_images),
+            rates=rates,
+            seed=args.seed,
+            iter_idx=j
         )
         cur_num_samples = 0
 
@@ -152,6 +138,8 @@ if __name__ == '__main__':
                 images += prev_images[len(images):]
 
             NC = len(seen_labels)
+            P = M if args.ref_mode == 'oracle' else N
+
             labels = labels.to(device)
             image_kwargs = score_calculator.process_images(images)
 
@@ -161,43 +149,119 @@ if __name__ == '__main__':
                     **image_kwargs
                 )
                 
-                known_mixup, unknown_mixup = mixup_fn(chosen_images, images, rates) 
+                if args.ref_mode == 'in_batch':
+                    # O: (N, M), R: (N), T: (N)
+                    # TM: (N, N, R)
+                    known_mixup, unknown_mixup = mixup_fn(
+                        oracle=chosen_images, 
+                        references=images,
+                        targets=images,
+                        rates=rates,
+                    ) 
+                elif args.ref_mode == 'oracle':
+                    # (N), (N, P) -> (N * P * R)
+                    unknown_mixup = []
+                    for image, chosen in zip(images, chosen_images):
+                        # (1 * P * R)
+                        unknown = mixup_fn(
+                            references=chosen,
+                            targets=[image],
+                            rates=rates,
+                            seed=args.seed,
+                        )
+                        unknown_mixup += unknown
+                    known_mixup = None
+                elif args.ref_mode == 'rand_id':
+                    # (N), (P) -> (N, P, R)
+                    unknown_mixup = []
+                    for image in images:
+                        # (1 * P * R)
+                        unknown = mixup_fn(
+                            references=ref_images,
+                            targets=[image],
+                            rates=rates,
+                            seed=args.seed,
+                        )
+                        unknown_mixup += unknown
+                    known_mixup = None
+
+                if args.ref_mode == 'oracle':
+                    ref_images_log = chosen_images
+                elif args.ref_mode == 'in_batch':
+                    ref_images_log = list(itertools.repeat(images, N))
+                elif args.ref_mode == 'rand_id':
+                    ref_images_log = list(itertools.repeat(ref_images, N))
+
                 log_mixup_samples(
-                    known_mixup_table, 
-                    unknown_mixup_table, 
-                    known_mixup, 
-                    unknown_mixup, 
-                    images, 
-                    chosen_images, 
-                    rates, 
-                    j,
+                    ref_images=ref_images_log,
+                    known_mixup_table=known_mixup_table, 
+                    unknown_mixup_table=unknown_mixup_table, 
+                    known_mixup=known_mixup,
+                    unknown_mixup=unknown_mixup, 
+                    images=images, 
+                    chosen_images=chosen_images, 
+                    rates=rates, 
+                    j=j,
+                    N=N,
+                    P=P,
+                    R=R,
+                    M=M,
                 )
-
-                # (N * M * N * R * NC) -> (N, M, N, R, NC) -> (N, N, R, NC) -> (N * N * R * NC)
-                known_logits = score_calculator.process_mixup_images(known_mixup)
-                known_logits = known_logits.view(N, M, N, R, -1)
-                known_logits = torch.mean(known_logits, dim=1).view(-1, NC)
-
-                # (N * N * R)
-                unknown_logits = score_calculator.process_mixup_images(unknown_mixup)
-
+                
+                # (N * M * P * R * NC) -> (N, M, P, R, NC) -> (N, P, R, NC) -> (N * P * R * NC)
+                known_logits = score_calculator.process_mixed_oracle(
+                    known_mixup, 
+                    **image_kwargs
+                )
+                if args.ref_mode == 'in_batch' or args.ref_mode == 'rand_id':
+                    known_logits = known_logits.view(N, M, N, R, -1)
+                    known_logits = torch.mean(known_logits, dim=1).view(-1, NC)
+                elif args.ref_mode == 'oracle':
+                    known_logits = known_logits.view(N, M, M, R, -1)
+                    mask = torch.ones(
+                        (M, M), 
+                        device=known_logits.device
+                    )
+                    mask.fill_diagonal_(0)
+                    mask = mask[None, :, :, None, None]
+                    known_logits = known_logits * mask
+                    known_logits = torch.sum(known_logits, dim=1)
+                    knwon_logits = known_logits / (M - 1)
+                    known_logits = knwon_logits.view(-1, NC)
+                    
+                # (N * P * R) -> (N * P * R * NC)
+                unknown_logits = score_calculator.process_mixed_target(
+                    unknown_mixup,
+                    **image_kwargs
+                )
+                # (N * P * R * NC) -> (N * P * R)
                 dists = score_calculator.calculate_diff(known_logits, unknown_logits)
 
                 if args.abs:
                     dists = torch.abs(dists)
 
-                dists = dists.view(N, N, R)
-                dists = torch.mean(dists, dim=-1)
-                mask = torch.ones_like(dists)
-                mask.fill_diagonal_(0.0)
-                dists = dists * mask
+                if args.ref_mode == 'in_batch':
+                    dists = dists.view(N, N, R)
+                    dists = torch.mean(dists, dim=-1)
+                    mask = torch.ones_like(dists)
+                    mask.fill_diagonal_(0.0)
+                    dists = dists * mask
+                elif args.ref_mode == 'oracle':
+                    dists = dists.view(N, M, R)
+                    dists = torch.mean(dists, dim=-1)
+                elif args.ref_mode == 'rand_id':
+                    dists = dists.view(N, N, R)
+                    dists = torch.mean(dists, dim=-1)
 
                 if args.top_1:
                     abs_dists = torch.abs(dists)
                     abs_max_idx = torch.argmax(abs_dists, dim=-1)
                     dists = dists[torch.arange(dists.size(0)), abs_max_idx]
                 else:
-                    dists = torch.sum(dists, dim=-1) / torch.sum(mask > 0.5, dim=-1)
+                    if args.ref_mode == 'in_batch':
+                        dists = torch.sum(dists, dim=-1) / torch.sum(mask > 0.5, dim=-1)
+                    elif args.ref_mode == 'oracle' or args.ref_mode == 'rand_id':
+                        dists = torch.mean(dists, dim=-1)
             
             base_scores = score_calculator.calculate_base_scores(**image_kwargs)
 
@@ -242,10 +306,15 @@ if __name__ == '__main__':
         wandb.log({'auroc': auroc})
         aurocs.append(auroc)
     
-    wandb.log({
-        'oracle_mixup': known_mixup_table,
-        'target_mixup': unknown_mixup_table,
-    })
+    if args.ref_mode == 'in_batch':
+        wandb.log({
+            'oracle_mixup': known_mixup_table,
+            'target_mixup': unknown_mixup_table,
+        })
+    else:
+        wandb.log({
+            'target_mixup': unknown_mixup_table,
+        })
 
     print('all auc scores:', aurocs)
     avg_auroc = np.mean(aurocs)
