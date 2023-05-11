@@ -1,4 +1,11 @@
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import (
+    Any, 
+    Dict, 
+    Optional, 
+    Sequence, 
+    Union,
+)
+import pathlib
 
 import torch
 from pytorch_lightning import LightningModule
@@ -109,6 +116,8 @@ class TextClassifier(LightningModule):
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         print(f"{self.global_step} saving checkpoint")
+        model_path = pathlib.Path(f'{self.trainer.default_root_dir}/{self.checkpoint_path}')
+        model_path.mkdir(parents=True, exist_ok=True)
         self.model.save_pretrained(f'{self.trainer.default_root_dir}/{self.checkpoint_path}')
         tokenizer = AutoTokenizer.from_pretrained(self.model_path)
         tokenizer.save_pretrained(f'{self.trainer.default_root_dir}/{self.checkpoint_path}')
