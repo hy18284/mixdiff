@@ -11,7 +11,7 @@ do
             --config text_classification/configs/clinic150_test.yml \
             --trainer.logger.init_args.name clinic150_classifier_ts_${test_seed}_tr_${test_id_ratio} \
             --model.num_labels $test_n_labels \
-            --model.checkpoint_path checkpoints_debug/clinic150_ts_${test_seed}_tr_${test_id_ratio} \
+            --model.checkpoint_path checkpoints/clinic150_cs/ts_${test_seed}_tr_${test_id_ratio} \
             --data.init_args.class_split_seed $test_seed \
             --data.init_args.seen_class_ratio $test_id_ratio 
 
@@ -26,7 +26,7 @@ do
                     --config text_classification/configs/clinic150_val.yml \
                     --trainer.logger.init_args.name clinic150_classifier_ts_${test_seed}_tr_${test_id_ratio}_vs_${val_seed}_vr_${val_id_ratio} \
                     --model.num_labels $val_n_labels \
-                    --model.checkpoint_path checkpoints_debug/clinic150_ts_${test_seed}_tr_${test_id_ratio}_vs_${val_seed}_vr_${val_id_ratio} \
+                    --model.checkpoint_path checkpoints/clinic150_cs/ts_${test_seed}_tr_${test_id_ratio}_vs_${val_seed}_vr_${val_id_ratio} \
                     --data.init_args.class_split_seed $val_seed \
                     --data.init_args.seen_class_ratio $val_id_ratio \
                     --data.init_args.train_dataset.init_args.class_split_seed $test_seed \
