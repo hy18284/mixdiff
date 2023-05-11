@@ -14,8 +14,8 @@ if __name__ == '__main__':
         model=cli.model, 
         datamodule=cli.datamodule,
     )
-    cli.trainer.test(
-        model=cli.model, 
-        datamodule=cli.datamodule,
-        ckpt_path='best',
-    )
+    # cli.trainer.test(
+    #     model=cli.model, 
+    #     datamodule=cli.datamodule,
+    #     ckpt_path='best',
+    # )

@@ -10,12 +10,12 @@ trainer:
     class_path: pytorch_lightning.loggers.wandb.WandbLogger
     init_args:
       name: clinic150_classifier
-      project: ZOC
+      project: ZOC_debug
   callbacks:
     - class_path: pytorch_lightning.callbacks.early_stopping.EarlyStopping
       init_args:
         monitor: 'val_loss'
-        patience: 100
+        patience: 10
         mode: min
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
@@ -23,7 +23,7 @@ trainer:
         save_top_k: 1
         mode: min
   fast_dev_run: false
-  max_epochs: 1000000000
+  max_epochs: 2
   min_epochs: null
   max_steps: 100000000000
   min_steps: null
@@ -60,8 +60,43 @@ model:
   lr: 1.0e-05
   checkpoint_path: checkpoints/clinic150_bert
 data:
-  class_path: text_classification.clinic150_datamodule.CLINIC150DataModule
+  class_path: text_classification.class_split_datamodule.ClassSplitDataModule
   init_args:
+
+    train_dataset:
+      class_path: text_classification.clinic150_datamodule.CLINIC150
+      init_args:
+        mode: train
+        path: data/clinc150/
+        tokenizer_path: 'bert-base-uncased'
+        add_oos: false
+        oos_only: false
+        wiki_for_test: false
+        beautify_intents: true
+
+    val_dataset:
+      class_path: text_classification.clinic150_datamodule.CLINIC150
+      init_args:
+        mode: val
+        path: data/clinc150/
+        tokenizer_path: 'bert-base-uncased'
+        add_oos: false
+        oos_only: false
+        wiki_for_test: false
+        beautify_intents: true
+
+    test_dataset:
+      class_path: text_classification.clinic150_datamodule.CLINIC150
+      init_args:
+        mode: test
+        path: data/clinc150/
+        tokenizer_path: 'bert-base-uncased'
+        add_oos: true
+        oos_only: false
+        wiki_for_test: false
+        beautify_intents: true
+
+    class_split_seed: null
+    seen_class_ratio: null
+    ood_labels: []
     batch_size: 128
-    path: data/clinc150/data_full.json
-    tokenizer_path: bert-base-uncased
