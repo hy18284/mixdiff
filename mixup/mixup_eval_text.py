@@ -289,12 +289,14 @@ if __name__ == '__main__':
 
             if score_calculator.utilize_mixup:
                 mixdiff_scores += (args.gamma * dists).tolist()[:orig_n_samples]
-                dists = base_scores + args.gamma * dists[:orig_n_samples]
+                dists = base_scores + args.gamma * dists
             else:
-                dists = base_scores[:orig_n_samples]
+                dists = base_scores
+            
+            dists = dists[:orig_n_samples]
             
             targets += [int(label not in seen_idx) for label in labels][:orig_n_samples]
-            scores += dists.tolist()[:orig_n_samples]
+            scores += dists.tolist()
 
             cur_num_samples += N
             if args.max_samples is not None and cur_num_samples >= args.max_samples:
