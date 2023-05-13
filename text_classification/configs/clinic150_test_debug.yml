@@ -15,6 +15,7 @@ trainer:
     - class_path: pytorch_lightning.callbacks.early_stopping.EarlyStopping
       init_args:
         monitor: 'val_loss'
+        stopping_threshold: 1.0
         patience: 10
         mode: min
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
