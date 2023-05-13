@@ -3,8 +3,9 @@ import copy
 import itertools
 
 import torch
-import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import (
+    roc_auc_score,
+)
 from tqdm import tqdm
 import numpy as np
 import wandb
@@ -16,7 +17,11 @@ from jsonargparse import (
 from .ood_score_calculators.ood_score_calculator import OODScoreCalculator
 from .ood_datamodules.base_ood_datamodule import BaseOODDataModule
 from .mixup_operators.base_mixup_operator import BaseMixupOperator
-from .utils import log_mixup_samples
+from .utils import (
+    log_mixup_samples,
+    calculate_fnr_at,
+    calculate_fpr_at,
+)
 
 
 def parse_args():
@@ -36,6 +41,8 @@ def parse_args():
     parser.add_argument('--max_samples', type=int, default=None, required=False)
     parser.add_argument('--model_path', type=str)
     parser.add_argument('--ref_mode', type=str, default='in_batch')
+    parser.add_argument('--fnr_at', type=float, default=0.95)
+    parser.add_argument('--fpr_at', type=float, default=0.95)
     parser.add_subclass_arguments(OODScoreCalculator, 'score_calculator')
     parser.add_subclass_arguments(BaseOODDataModule, 'datamodule')
     parser.add_subclass_arguments(BaseMixupOperator, 'mixup_operator')
@@ -64,6 +71,7 @@ if __name__ == '__main__':
     batch_size = N
 
     device = torch.device(args.device)
+    # TODO: Remove this. Use model_path from get_splits
     score_calculator.load_model(args.model_path, device)
     
     if score_calculator.utilize_mixup: 
@@ -88,12 +96,20 @@ if __name__ == '__main__':
     wandb.config.dataset = str(datamodule)
      
     aurocs = []
+    fprs = []
+    fnrs = []
     mixdiff_scores = []
     known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
     unknown_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
     wandb.Table.MAX_ROWS = 200000
 
-    for j, (seen_labels, seen_idx, given_images, ref_images) in enumerate(
+    for j, (
+        seen_labels, 
+        seen_idx, 
+        given_images, 
+        ref_images, 
+        model_path,
+    ) in enumerate(
         datamodule.get_splits(
             n_samples_per_class=M, 
             seed=args.seed, 
@@ -121,14 +137,15 @@ if __name__ == '__main__':
         scores = []
 
         loader = datamodule.construct_loader(batch_size=batch_size)
-        mixup_kwargs = score_calculator.on_eval_start(
+        score_calculator.on_eval_start(
             seen_labels=copy.deepcopy(seen_labels),
             given_images=copy.deepcopy(given_images),
             mixup_fn=mixup_fn,
             ref_images=copy.deepcopy(ref_images),
             rates=rates,
             seed=args.seed,
-            iter_idx=j
+            iter_idx=j,
+            model_path=model_path,
         )
         cur_num_samples = 0
 
@@ -279,7 +296,7 @@ if __name__ == '__main__':
             if args.max_samples is not None and cur_num_samples >= args.max_samples:
                 break
             
-        score_calculator.on_eval_end()
+        score_calculator.on_eval_end(iter_idx=j)
 
         if not score_calculator.utilize_mixup:
             mixdiff_scores = itertools.repeat(0.0, len(scores))
@@ -303,8 +320,19 @@ if __name__ == '__main__':
         
         auroc = roc_auc_score(targets[:args.max_samples], scores[:args.max_samples])
         print(f'auroc: {auroc}')
-        wandb.log({'auroc': auroc})
         aurocs.append(auroc)
+
+        fpr_at = calculate_fpr_at(scores, targets, args.fpr_at)
+        fprs.append(fpr_at)
+
+        fnr_at = calculate_fnr_at(scores, targets, args.fnr_at)
+        fnrs.append(fnr_at)
+
+        wandb.log({
+            'auroc': auroc,
+            f'fpr{args.fpr_at}': fpr_at,
+            f'fnr{args.fnr_at}': fnr_at,
+        })
     
     if args.ref_mode == 'in_batch':
         wandb.log({
@@ -320,4 +348,12 @@ if __name__ == '__main__':
     avg_auroc = np.mean(aurocs)
     auroc_std = np.std(aurocs)
     print('avg', avg_auroc, 'std', auroc_std)
-    wandb.log({'avg_auroc': avg_auroc, 'auroc_std': auroc_std})
+
+    wandb.log({
+        'avg_auroc': avg_auroc, 
+        'auroc_std': auroc_std,
+        f'avg_fpr{round(args.fpr_at * 100)}': np.mean(fprs), 
+        f'fpr{round(args.fpr_at * 100)}_std': np.std(fprs),
+        f'avg_fnr{round(args.fnr_at * 100)}': np.mean(fnrs), 
+        f'fnr{round(args.fnr_at * 100)}_std': np.std(fnrs),
+    })

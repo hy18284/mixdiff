@@ -68,3 +68,33 @@ def log_mixup_samples(
 
         for row in unknown_rows:
             unknown_mixup_table.add_data(*row)
+
+
+def calculate_fnr_at(scores, targets, tpr_percent):
+    scores_ood = [score for score, target in zip(scores, targets) if target == 1]
+    scores_id = [score for score, target in zip(scores, targets) if target == 0]
+
+    scores_id.sort(reverse=False)
+    tpr_idx = round(len(scores_id) * tpr_percent)
+    threshold = scores_id[tpr_idx]
+
+    scores_ood = np.array(scores_ood)
+    false_negatives = scores_ood > threshold
+    fnr = np.sum(false_negatives) / len(scores_ood)
+
+    return fnr
+
+
+def calculate_fpr_at(scores, targets, tnr_percent):
+    scores_ood = [score for score, target in zip(scores, targets) if target == 1]
+    scores_id = [score for score, target in zip(scores, targets) if target == 0]
+
+    scores_ood.sort(reverse=True)
+    tnr_idx = round(len(scores_ood) * tnr_percent)
+    threshold = scores_ood[tnr_idx]
+
+    scores_id = np.array(scores_id)
+    false_positives = scores_id > threshold
+    fpr = np.sum(false_positives) / len(scores_id)
+
+    return fpr
