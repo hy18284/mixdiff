@@ -29,6 +29,7 @@ def parse_args():
     parser.add_argument('--n', type=int, default=10)
     parser.add_argument('--m', type=int, default=10)
     parser.add_argument('--r', type=int, default=3)
+    parser.add_argument('--p', type=int, default=10)
     parser.add_argument('--r_ref', type=float, default=0)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--wandb_name', type=str, default='mixup_v1')
@@ -67,8 +68,12 @@ if __name__ == '__main__':
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    N, M, R = args.n, args.m, args.r
+    N, M, R, P = args.n, args.m, args.r, args.p
     batch_size = N
+    if args.ref_mode == 'oracle':
+        P = M 
+    elif args.ref_mode == 'in_batch':
+        P = N
 
     device = torch.device(args.device)
     # TODO: Remove this. Use model_path from get_splits
@@ -113,7 +118,7 @@ if __name__ == '__main__':
         datamodule.get_splits(
             n_samples_per_class=M, 
             seed=args.seed, 
-            n_ref_samples=N
+            n_ref_samples=P,
         )
     ):
         seen_idx = seen_idx.to(device) 
@@ -151,11 +156,11 @@ if __name__ == '__main__':
 
         for i, (images, labels) in enumerate(tqdm(loader)):
             orig_n_samples = len(images)
-            if len(images) != N:
-                images += prev_images[len(images):]
+            if len(images) != batch_size:
+                dummy = [images[0]] * (batch_size - len(images))
+                images += dummy
 
             NC = len(seen_labels)
-            P = M if args.ref_mode == 'oracle' else N
 
             labels = labels.to(device)
             image_kwargs = score_calculator.process_images(images)
@@ -207,7 +212,7 @@ if __name__ == '__main__':
                 elif args.ref_mode == 'in_batch':
                     ref_images_log = list(itertools.repeat(images, N))
                 elif args.ref_mode == 'rand_id':
-                    ref_images_log = list(itertools.repeat(ref_images, N))
+                    ref_images_log = list(itertools.repeat(ref_images, P))
 
                 log_mixup_samples(
                     ref_images=ref_images_log,
@@ -231,7 +236,7 @@ if __name__ == '__main__':
                     **image_kwargs
                 )
                 if args.ref_mode == 'in_batch' or args.ref_mode == 'rand_id':
-                    known_logits = known_logits.view(N, M, N, R, -1)
+                    known_logits = known_logits.view(N, M, P, R, -1)
                     known_logits = torch.mean(known_logits, dim=1).view(-1, NC)
                 elif args.ref_mode == 'oracle':
                     known_logits = known_logits.view(N, M, M, R, -1)
@@ -267,7 +272,7 @@ if __name__ == '__main__':
                     dists = dists.view(N, M, R)
                     dists = torch.mean(dists, dim=-1)
                 elif args.ref_mode == 'rand_id':
-                    dists = dists.view(N, N, R)
+                    dists = dists.view(N, P, R)
                     dists = torch.mean(dists, dim=-1)
 
                 if args.top_1:
@@ -292,7 +297,6 @@ if __name__ == '__main__':
             scores += dists.tolist()[:orig_n_samples]
 
             cur_num_samples += N
-            prev_images = images
             if args.max_samples is not None and cur_num_samples >= args.max_samples:
                 break
             
