@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for test_seed in 0 1 2 3 4
+for test_seed in 0 1 2 3 4 5 6 7 8 9
 do
     for test_id_ratio in 0.25 0.5 0.75
     do
@@ -15,7 +15,7 @@ do
             --data.init_args.class_split_seed $test_seed \
             --data.init_args.seen_class_ratio $test_id_ratio 
 
-        for val_seed in 0 1 2 3 4
+        for val_seed in 0
         do
             for val_id_ratio in 0.25 0.5 0.75
             do
