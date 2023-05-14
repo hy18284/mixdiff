@@ -1,4 +1,3 @@
-import json
 import pathlib
 import csv
 
@@ -22,9 +21,9 @@ class Top(Dataset):
         self,
         mode: str,
         tokenizer_path: str,
-        path: str='data/top/top-dataset-semantic-parsing',
-        add_oos: bool=False,
-        beautify_intents: bool=True,
+        path: str = 'data/top/top-dataset-semantic-parsing',
+        add_oos: bool = False,
+        beautify_intents: bool = True,
     ):
         super().__init__()
         self.data_path = path
@@ -46,24 +45,24 @@ class Top(Dataset):
                 if not (intent in self.oos_names) or add_oos:
                     self.data.append((query, intent))
         
-        self.intents = []
+        self._intents = []
         with open(pathlib.Path(self.data_path) / 'train.tsv') as f:
             for line in csv.reader(f, delimiter='\t'):
                 query, query_tok, intent = line
                 intent = intent.split()
                 intent = intent[0][1:]
-                self.intents.append(intent)
+                self._intents.append(intent)
         
-        self.intents = list(set(self.intents) - set(self.oos_names))
-        self.intents.sort()
+        self._intents = list(set(self._intents) - set(self.oos_names))
+        self._intents.sort()
 
         if add_oos:
-            self.intents += self.oos_names
+            self._intents += self.oos_names
         
         if beautify_intents:
-            self.intents = [
+            self._intents = [
                 ' '.join(intent[3:].split('_'))
-                for intent in self.intents
+                for intent in self._intents
             ]
             self.data = [
                 (query, ' '.join(intent[3:].split('_')))
@@ -74,7 +73,7 @@ class Top(Dataset):
         query, intent = self.data[idx]
         return {
             'query': query.strip(),
-            'label': self.intents.index(intent.strip())
+            'label': self._intents.index(intent.strip())
         }
     
     def __len__(self):
@@ -94,6 +93,10 @@ class Top(Dataset):
         )
         output['labels'] = labels
         return output
+    
+    @property 
+    def intents(self):
+        return self._intents
     
 
 class TopDataModule(LightningDataModule):
