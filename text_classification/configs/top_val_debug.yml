@@ -9,15 +9,15 @@ trainer:
   logger:
     class_path: pytorch_lightning.loggers.wandb.WandbLogger
     init_args:
-      name: clinic150_classifier
+      name: top_classifier
       project: ZOC_debug
   callbacks:
     - class_path: pytorch_lightning.callbacks.early_stopping.EarlyStopping
       init_args:
         monitor: 'val_loss'
-        stopping_threshold: 1.0
-        patience: 10
+        patience: 0
         mode: min
+        min_delta: 0.001
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
         monitor: 'val_loss'
