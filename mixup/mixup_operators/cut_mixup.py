@@ -3,6 +3,7 @@ from typing import (
     List,
     Tuple,
     Union,
+    Optional,
 )
 
 from transformers import (
@@ -31,9 +32,11 @@ class CutMixup(BaseMixupOperator):
 
     def __call__(
         self, 
-        oracle: List[List[str]], 
-        samples: List[str], 
-        rates: List[float]
+        references: List[str],
+        rates: List[float],
+        oracle: List[List[str]] = None,
+        targets: List[str] = None, 
+        seed: Optional[int] = None,
     ) -> Tuple[List[List[List[List[str]]]], List[List[List[str]]]]:
         """Performs mixup and returns oracle, in-batch mixed samples
 
@@ -49,29 +52,41 @@ class CutMixup(BaseMixupOperator):
         """
         rates = rates.tolist()
 
-        indices_list = self._make_mixup_indices(samples, rates)
+        indices_list = self._make_mixup_indices(
+            references,
+            rates,
+            seed,
+        )
 
-        # (N * M * N * R) 
-        oracle_mixup = []
-        for oracle_images in oracle:
-            for oracle_image in oracle_images:
-                for sample, indices in zip(samples, indices_list):
+        if oracle is not None:
+            # (N * M * N * R) 
+            oracle_mixup = []
+            for oracle_images in oracle:
+                for oracle_image in oracle_images:
+                    for ref, indices in zip(references, indices_list):
+                        mixup = [
+                            self.mixup(oracle_image, ref, idx) 
+                            for idx in indices
+                        ]
+                        oracle_mixup += mixup
+
+            if targets is None:
+                return oracle_mixup
+        
+        if targets is not None:
+            # (N * N * R) 
+            target_mixup = [] 
+            for target in targets:
+                for ref, indices in zip(references, indices_list):
                     mixup = [
-                        self.mixup(oracle_image, sample, idx) 
+                        self.mixup(target, ref, idx) 
                         for idx in indices
                     ]
-                    oracle_mixup += mixup
-        
-        # (N * N * R) 
-        target_mixup = [] 
-        for sample_x in samples:
-            for sample_y, indices in zip(samples, indices_list):
-                mixup = [
-                    self.mixup(sample_x, sample_y, idx) 
-                    for idx in indices
-                ]
-                target_mixup += mixup
-        
+                    target_mixup += mixup
+
+            if oracle is None:
+                return target_mixup
+            
         return oracle_mixup, target_mixup
 
     def mixup(self, x: str, y: str, idx: List[int]):
@@ -128,7 +143,10 @@ class CutMixup(BaseMixupOperator):
 
         return mixed
 
-    def _make_mixup_indices(self, samples, rates):
+    def _make_mixup_indices(self, samples, rates, seed=None):
+        if seed is not None:
+            rng = np.random.default_rng(seed)
+
         indices_list = []
         for sample in samples:
             indices = []
@@ -144,7 +162,10 @@ class CutMixup(BaseMixupOperator):
                     idx = slice(start, end)
 
                 if len(sample[idx]) == 0:
-                    idx = np.random.randint(0, len(sample))
+                    if seed is not None:
+                        idx = rng.integers(0, len(sample))
+                    else:
+                        idx = np.random.randint(0, len(sample))
                     idx = slice(idx, idx + 1)
 
                 indices.append(idx)
