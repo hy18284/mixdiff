@@ -61,6 +61,7 @@ class CLINIC150OODDataset(BaseOODDataModule):
             torch.tensor(range(len(self.train_dataset.intents))),
             given_images,
             ref_images,
+            None,
         )
 
     def sample_given_images(
