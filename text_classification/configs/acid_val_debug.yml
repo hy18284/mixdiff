@@ -9,13 +9,13 @@ trainer:
   logger:
     class_path: pytorch_lightning.loggers.wandb.WandbLogger
     init_args:
-      name: top_classifier
-      project: ZOC
+      name: acid_classifier
+      project: ZOC_debug
   callbacks:
     - class_path: pytorch_lightning.callbacks.early_stopping.EarlyStopping
       init_args:
         monitor: 'val_loss'
-        patience: 0
+        patience: 10
         mode: min
         min_delta: 0.001
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
@@ -24,7 +24,7 @@ trainer:
         save_top_k: 1
         mode: min
   fast_dev_run: false
-  max_epochs: 10000000000
+  max_epochs: 10000
   min_epochs: null
   max_steps: 100000000000
   min_steps: null
@@ -34,8 +34,8 @@ trainer:
   limit_test_batches: null
   limit_predict_batches: null
   overfit_batches: 0.0
-  val_check_interval: 100
-  check_val_every_n_epoch: null
+  val_check_interval: null
+  check_val_every_n_epoch: 1
   num_sanity_val_steps: null
   log_every_n_steps: 1
   enable_checkpointing: null
@@ -56,10 +56,10 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
   default_root_dir: null
 model:
-  num_labels: 16
+  num_labels: 175
   model_path: bert-base-uncased
   lr: 1.0e-05
-  checkpoint_path: checkpoints/top_cs
+  checkpoint_path: checkpoints_debug/acid_cs
 data:
   class_path: text_classification.class_split_datamodule.ClassSplitDataModule
   init_args:
@@ -74,13 +74,15 @@ data:
         val_split_seed: null
         mode: null
         dataset:
-          class_path: text_classification.top_datamodule.Top
+          class_path: text_classification.acid_datamodule.Acid
           init_args:
             mode: train
-            path: 'data/top/top-dataset-semantic-parsing'
             tokenizer_path: 'bert-base-uncased'
-            add_oos: false
+            path: 'data/acid'
+            oos_data: null
             beautify_intents: true
+            val_ratio: 0.1
+            seed: 42
 
     val_dataset:
       class_path: text_classification.class_split_datamodule.ClassSplitWrapper
@@ -92,22 +94,26 @@ data:
         val_split_seed: null
         mode: null
         dataset:
-          class_path: text_classification.top_datamodule.Top
+          class_path: text_classification.acid_datamodule.Acid
           init_args:
             mode: train
-            path: 'data/top/top-dataset-semantic-parsing'
             tokenizer_path: 'bert-base-uncased'
-            add_oos: false
+            path: 'data/acid'
+            oos_data: null
             beautify_intents: true
+            val_ratio: 0.1
+            seed: 42
 
     test_dataset:
-      class_path: text_classification.top_datamodule.Top
+      class_path: text_classification.acid_datamodule.Acid
       init_args:
         mode: val
-        path: 'data/top/top-dataset-semantic-parsing'
         tokenizer_path: 'bert-base-uncased'
-        add_oos: false
+        path: 'data/acid'
+        oos_data: null
         beautify_intents: true
+        val_ratio: 0.1
+        seed: 42
 
     class_split_seed: null
     seen_class_ratio: null

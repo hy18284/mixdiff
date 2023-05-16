@@ -56,7 +56,7 @@ class ClassSplitWrapper(Dataset):
             label2samples[label] = sample
         
         self.seen_labels = [
-            label for label in label2samples.keys()
+            label for label in range(len(self.dataset.intents))
             if label not in ood_labels
         ]
         total_n_labels = len(self.seen_labels) + len(ood_labels)

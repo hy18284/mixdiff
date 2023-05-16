@@ -24,11 +24,11 @@ class Acid(Dataset):
         self,
         mode: str,
         tokenizer_path: str,
-        path: str='data/acid',
-        oos_data: Optional[str]=None,
-        beautify_intents: bool=True,
-        val_ratio: float=0.1,
-        seed: int=42,
+        path: str = 'data/acid',
+        oos_data: Optional[str] = None,
+        beautify_intents: bool = True,
+        val_ratio: float = 0.1,
+        seed: int = 42,
     ):
         super().__init__()
         self.val_ratio = val_ratio
@@ -60,18 +60,18 @@ class Acid(Dataset):
             else:
                 self.data = val
        
-        self.intents = [] 
+        self._intents = [] 
         with open(pathlib.Path(self.path) / 'customer_training.csv') as f:
             for line in csv.DictReader(f, delimiter=','):
-                self.intents.append(line['INTENT_NAME'])
+                self._intents.append(line['INTENT_NAME'])
         
-        self.intents = list(set(self.intents))
-        self.intents.sort()
+        self._intents = list(set(self._intents))
+        self._intents.sort()
 
         if beautify_intents:
-            self.intents = [
+            self._intents = [
                 ' '.join(intent.split('_'))
-                for intent in self.intents
+                for intent in self._intents
             ]
             self.data = [
                 (query, ' '.join(intent.split('_')))
@@ -87,7 +87,7 @@ class Acid(Dataset):
                 wiki_for_test=self.oos_data == 'clinic_wiki',
                 beautify_intents=beautify_intents,
             )
-            self.intents += self.oos_data.intents
+            self._intents += self.oos_data.intents
 
     def __getitem__(self, idx):
         if idx >= len(self.data):
@@ -100,7 +100,7 @@ class Acid(Dataset):
             query, intent = self.data[idx]
             return {
                 'query': query.strip(),
-                'label': self.intents.index(intent.strip())
+                'label': self._intents.index(intent.strip())
             }
     
     def __len__(self):
@@ -123,6 +123,10 @@ class Acid(Dataset):
         )
         output['labels'] = labels
         return output
+    
+    @property
+    def intents(self):
+        return self._intents
     
 
 class AcidDataModule(LightningDataModule):

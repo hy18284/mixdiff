@@ -9,14 +9,15 @@ trainer:
   logger:
     class_path: pytorch_lightning.loggers.wandb.WandbLogger
     init_args:
-      name: top_classifier
-      project: ZOC
+      name: acid_classifier
+      project: ZOC_debug
   callbacks:
     - class_path: pytorch_lightning.callbacks.early_stopping.EarlyStopping
       init_args:
         monitor: 'val_loss'
         patience: 10
         mode: min
+        min_delta: 0.001
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
         monitor: 'val_loss'
@@ -33,8 +34,8 @@ trainer:
   limit_test_batches: null
   limit_predict_batches: null
   overfit_batches: 0.0
-  val_check_interval: 250
-  check_val_every_n_epoch: null
+  val_check_interval: null
+  check_val_every_n_epoch: 1
   num_sanity_val_steps: null
   log_every_n_steps: 1
   enable_checkpointing: null
@@ -55,13 +56,46 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
   default_root_dir: null
 model:
-  num_labels: 16
+  num_labels: 175
   model_path: bert-base-uncased
   lr: 1.0e-05
-  checkpoint_path: checkpoints/top_bert
+  checkpoint_path: checkpoints_debug/acid_cs
 data:
-  class_path: text_classification.top_datamodule.TopDataModule
-  val_check_interval: null
-  check_val_every_n_epoch: 1
-    path: data/top/top-dataset-semantic-parsing
-    tokenizer_path: bert-base-uncased
+  class_path: text_classification.class_split_datamodule.ClassSplitDataModule
+  init_args:
+
+    train_dataset:
+      class_path: text_classification.acid_datamodule.Acid
+      init_args:
+        mode: train
+        tokenizer_path: 'bert-base-uncased'
+        path: 'data/acid'
+        oos_data: null
+        beautify_intents: true
+        val_ratio: 0.1
+        seed: 42
+
+    val_dataset:
+      class_path: text_classification.acid_datamodule.Acid
+      init_args:
+        mode: val
+        tokenizer_path: 'bert-base-uncased'
+        path: 'data/acid'
+        oos_data: null
+        beautify_intents: true
+        val_ratio: 0.1
+        seed: 42
+
+    test_dataset:
+      class_path: text_classification.acid_datamodule.Acid
+      init_args:
+        mode: test
+        tokenizer_path: 'bert-base-uncased'
+        path: 'data/acid'
+        oos_data: null
+        beautify_intents: true
+
+    class_split_seed: null
+    seen_class_ratio: null
+    ood_labels: []
+    batch_size: 128

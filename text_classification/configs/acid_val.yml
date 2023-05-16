@@ -9,7 +9,7 @@ trainer:
   logger:
     class_path: pytorch_lightning.loggers.wandb.WandbLogger
     init_args:
-      name: top_classifier
+      name: acid_classifier
       project: ZOC
   callbacks:
     - class_path: pytorch_lightning.callbacks.early_stopping.EarlyStopping
@@ -56,10 +56,10 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
   default_root_dir: null
 model:
-  num_labels: 16
+  num_labels: 175
   model_path: bert-base-uncased
   lr: 1.0e-05
-  checkpoint_path: checkpoints/top_cs
+  checkpoint_path: checkpoints/acid_cs
 data:
   class_path: text_classification.class_split_datamodule.ClassSplitDataModule
   init_args:
@@ -74,13 +74,15 @@ data:
         val_split_seed: null
         mode: null
         dataset:
-          class_path: text_classification.top_datamodule.Top
+          class_path: text_classification.acid_datamodule.Acid
           init_args:
             mode: train
-            path: 'data/top/top-dataset-semantic-parsing'
             tokenizer_path: 'bert-base-uncased'
-            add_oos: false
+            path: 'data/acid'
+            oos_data: null
             beautify_intents: true
+            val_ratio: 0.1
+            seed: 42
 
     val_dataset:
       class_path: text_classification.class_split_datamodule.ClassSplitWrapper
@@ -92,22 +94,26 @@ data:
         val_split_seed: null
         mode: null
         dataset:
-          class_path: text_classification.top_datamodule.Top
+          class_path: text_classification.acid_datamodule.Acid
           init_args:
             mode: train
-            path: 'data/top/top-dataset-semantic-parsing'
             tokenizer_path: 'bert-base-uncased'
-            add_oos: false
+            path: 'data/acid'
+            oos_data: null
             beautify_intents: true
+            val_ratio: 0.1
+            seed: 42
 
     test_dataset:
-      class_path: text_classification.top_datamodule.Top
+      class_path: text_classification.acid_datamodule.Acid
       init_args:
         mode: val
-        path: 'data/top/top-dataset-semantic-parsing'
         tokenizer_path: 'bert-base-uncased'
-        add_oos: false
+        path: 'data/acid'
+        oos_data: null
         beautify_intents: true
+        val_ratio: 0.1
+        seed: 42
 
     class_split_seed: null
     seen_class_ratio: null
