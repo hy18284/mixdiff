@@ -45,10 +45,21 @@ class SnipsOODDatasetClinicTest(BaseOODDataModule):
 
 
     def get_splits(self, n_samples_per_class: int, seed: int):
+        given_images =self.sample_given_images(n_samples_per_class, seed)
+
+        if self.ref_mode == 'oracle':
+            ref_images = given_images
+        elif self.ref_mode == 'rand_id':
+            ValueError('rand_id is unsupported')
+        elif self.ref_mode == 'in_batch':
+            ref_images = None
+
         yield (
             self.train_dataset.intents,
             torch.tensor(range(len(self.train_dataset.intents))),
-            self.sample_given_images(n_samples_per_class, seed)
+            given_images,
+            ref_images,
+            None,
         )
 
     def sample_given_images(
