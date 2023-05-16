@@ -19,7 +19,7 @@ class BaseOODDataModule(ABC):
     
     @property
     def ref_mode(self) -> str:
-        self._ref_mode
+        return self._ref_mode
 
     @ref_mode.setter
     def ref_mode(self, ref_mode: str) -> str:

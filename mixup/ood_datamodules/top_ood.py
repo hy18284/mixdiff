@@ -15,7 +15,9 @@ class TopOODDataset(BaseOODDataModule):
         data_path: str='data/top/top-dataset-semantic-parsing',
         tokenizer_path: str = 'bert-base-uncased',
         beautify_intents: bool=True,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.mode = mode
         self.tokenizer_path = tokenizer_path
         self.data_path = data_path
@@ -54,6 +56,8 @@ class TopOODDataset(BaseOODDataModule):
             ValueError('rand_id is unsupported')
         elif self.ref_mode == 'in_batch':
             ref_images = None
+        else:
+            raise ValueError('invalid ref_mode', self.ref_mode)
 
         yield (
             self.train_dataset.intents,

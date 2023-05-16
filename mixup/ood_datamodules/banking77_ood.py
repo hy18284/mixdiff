@@ -16,7 +16,9 @@ class Banking77OODDatasetClinicTest(BaseOODDataModule):
         beautify_intents: bool=True,
         val_ratio: float=0.1,
         seed: int=42,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.mode = mode
         self.tokenizer_path = tokenizer_path
         
@@ -52,6 +54,8 @@ class Banking77OODDatasetClinicTest(BaseOODDataModule):
             ValueError('rand_id is unsupported')
         elif self.ref_mode == 'in_batch':
             ref_images = None
+        else:
+            raise ValueError('invalid ref_mode', self.ref_mode)
 
         yield (
             self.train_dataset.intents,

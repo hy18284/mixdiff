@@ -15,7 +15,9 @@ class AcidOODDatasetClinicTest(BaseOODDataModule):
         data_path: str='data/acid',
         tokenizer_path: str = 'bert-base-uncased',
         beautify_intents: bool=True,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.mode = mode
         self.data_path = data_path
         self.tokenizer_path = tokenizer_path
@@ -53,6 +55,8 @@ class AcidOODDatasetClinicTest(BaseOODDataModule):
             ValueError('rand_id is unsupported')
         elif self.ref_mode == 'in_batch':
             ref_images = None
+        else:
+            raise ValueError('invalid ref_mode', self.ref_mode)
 
         yield (
             self.train_dataset.intents,
