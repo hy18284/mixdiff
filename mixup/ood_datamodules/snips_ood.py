@@ -44,8 +44,13 @@ class SnipsOODDatasetClinicTest(BaseOODDataModule):
         )
 
 
-    def get_splits(self, n_samples_per_class: int, seed: int):
-        given_images =self.sample_given_images(n_samples_per_class, seed)
+    def get_splits(
+        self, 
+        n_samples_per_class: int, 
+        seed: int,
+        n_ref_samples,
+    ):
+        given_images = self.sample_given_images(n_samples_per_class, seed)
 
         if self.ref_mode == 'oracle':
             ref_images = given_images
