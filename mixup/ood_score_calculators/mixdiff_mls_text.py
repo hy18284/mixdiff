@@ -48,6 +48,8 @@ class MixDiffMaxLogitScoreTextZS(
         known_logits,
         unknown_logits,
     ):
+        # (N * P, NC * 2) -> 
+        known_logits = known_logits.view(-1, self.NC, 2)
         known_max = self._get_max_logits(known_logits)
         unknown_max = self._get_max_logits(unknown_logits)
 

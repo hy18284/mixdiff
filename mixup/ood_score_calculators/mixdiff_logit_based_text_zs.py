@@ -60,6 +60,7 @@ class MixDiffLogitBasedMixinTextZS:
             self.template.format(seen_label)
             for seen_label in seen_labels
         ]
+        self.NC = len(self.class_names)
 
         if model_path is not None and not self.ignore_model_path:
             self.model = BertForNextSentencePrediction.from_pretrained(model_path)
@@ -125,8 +126,11 @@ class MixDiffLogitBasedMixinTextZS:
                 logits = self._process_samples(mixed)
                 self.oracle_logits.append(logits)
 
-            # [NC, (M * P * R, NC, 2)] -> (NC, M * P * R, NC, 2)
+            # [NC, (M * P * R, NC, 2)] -> (NC, M * P * R * NC, 2)
             self.oracle_logits = torch.stack(self.oracle_logits, dim=0)
+            # (NC, M * P * R * NC, 2) ->  (NC, M * P * R , NC, 2)
+            NC = len(self.class_names)
+            self.oracle_logits = self.oracle_logits.view(NC, -1, NC, 2)
              
     def on_eval_end(self, iter_idx: int):
         self.id_logits = None
@@ -160,7 +164,7 @@ class MixDiffLogitBasedMixinTextZS:
     ):
         if self.selection_mode == 'argmax':
             # (N, NC, 2) -> (N, NC)
-            probs = torch.softmax(logits)[:, :, 0]
+            probs = torch.softmax(logits, dim=-1)[:, :, 0]
             max_indices = torch.argmax(probs, dim=-1)
             # (NC, M * P * R, NC, 2) -> (N, M * P * R, NC, 2)
             chosen_images = [given_images[idx] for idx in max_indices]
@@ -210,7 +214,7 @@ class MixDiffLogitBasedMixinTextZS:
     ):
         if self.ref_mode == 'oracle' or self.ref_mode == 'rand_id':
             # (N, NC, 2) -> (N, NC)
-            probs = torch.softmax(logits)[:, :, 0]
+            probs = torch.softmax(logits, dim=-1)[:, :, 0]
             max_indices = torch.argmax(probs, dim=-1)
             # (NC, M, M, R, NC, 2) -> (N, M, M, R, NC, 2)
             return self.oracle_logits[max_indices]
@@ -256,6 +260,11 @@ class MixDiffLogitBasedMixinTextZS:
         logits_list = []
         for pairs in images_list:
             images, class_names = list(zip(*pairs))
+            # print(len(images))
+            # print(len(class_names))
+            # print(images[:3])
+            # print(class_names[:3])
+
             batch = self.tokenizer(
                 images,
                 class_names,
@@ -270,4 +279,6 @@ class MixDiffLogitBasedMixinTextZS:
             logits_list.append(split_logits) 
 
         # (B, NC, 2)
-        return torch.cat(logits_list, dim=0)
+        logits = torch.cat(logits_list, dim=0)
+        logits = logits.view(-1, len(self.class_names), 2)
+        return logits

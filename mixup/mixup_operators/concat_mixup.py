@@ -69,13 +69,15 @@ class ConcatMixup(BaseMixupOperator):
     def mixup(self, x: str, ref: str):
         if self.ref_pos == 'front':
             return [' '.join([ref, x])]
-        elif self.ref_pos == 'back':
+        elif self.ref_pos == 'rear':
             return [' '.join([x, ref])]
-        else:
+        elif self.ref_pos == 'both':
             return [
                 ' '.join([ref, x]),
                 ' '.join([x, ref])
             ]
+        else:
+            ValueError('Invalid rates')
 
 
     def __str__(self):
