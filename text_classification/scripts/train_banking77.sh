@@ -17,7 +17,7 @@ do
 
         for val_seed in 0
         do
-            for val_id_ratio in 0.25 0.5 0.75
+            for val_id_ratio in 0.5 0.75
             do
                 val_n_labels=$(printf "%.0f"  $(echo  "$test_n_labels * $val_id_ratio" | bc))
                 echo "# of val labels: $val_n_labels"
@@ -28,7 +28,7 @@ do
                 fi
 
                 python -m text_classification.train_text_classifier \
-                    --config text_classification/configs/top_val.yml \
+                    --config text_classification/configs/banking77_val.yml \
                     --trainer.logger.init_args.name banking_classifier_ts_${test_seed}_tr_${test_id_ratio}_vs_${val_seed}_vr_${val_id_ratio} \
                     --model.num_labels $val_n_labels \
                     --model.checkpoint_path checkpoints/banking77_cs/ts_${test_seed}_tr_${test_id_ratio}_vs_${val_seed}_vr_${val_id_ratio} \

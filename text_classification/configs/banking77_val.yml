@@ -56,7 +56,7 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
   default_root_dir: null
 model:
-  num_labels: 16
+  num_labels: 77
   model_path: bert-base-uncased
   lr: 1.0e-05
   checkpoint_path: checkpoints/banking77

@@ -63,7 +63,7 @@ class ClassSplitWrapper(Dataset):
 
         n_seen = round(total_n_labels * seen_class_ratio)
         if n_seen == 0:
-            n_seen = 1
+            raise ValueError()
 
         rng = np.random.default_rng(class_split_seed)
         self.seen_labels.sort()

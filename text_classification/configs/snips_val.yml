@@ -116,3 +116,5 @@ data:
     seen_class_ratio: null
     ood_labels: []
     batch_size: 128
+    val_ratio: 0.1
+    val_split_seed: 42

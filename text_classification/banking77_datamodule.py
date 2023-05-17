@@ -50,12 +50,12 @@ class Banking77(Dataset):
                 self.data = val
         
         dataset = load_dataset('PolyAI/banking77', split='train')
-        self.intents = copy.deepcopy(dataset.features['label'].names)
+        self._intents = copy.deepcopy(dataset.features['label'].names)
 
         if beautify_intents:
-            self.intents = [
+            self._intents = [
                 ' '.join(intent.split('_'))
-                for intent in self.intents
+                for intent in self._intents
             ]
 
         if self.oos_data is not None:
@@ -67,7 +67,7 @@ class Banking77(Dataset):
                 beautify_intents=beautify_intents,
                 wiki_for_test=self.oos_data == 'clinic_wiki',
             )
-            self.intents += self.oos_data.intents
+            self._intents += self.oos_data.intents
 
     def __getitem__(self, idx):
         if idx >= len(self.data):
@@ -104,6 +104,10 @@ class Banking77(Dataset):
         )
         output['labels'] = labels
         return output
+
+    @property
+    def intents(self):
+        return copy.deepcopy(self._intents)
     
 
 class Banking77DataModule(LightningDataModule):
