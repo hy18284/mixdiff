@@ -1,0 +1,29 @@
+train_dataset:
+  dataset:
+    class_path: text_classification.top_datamodule.Top
+    init_args:
+      mode: train
+      data_path: data/top/top-dataset-semantic-parsing
+      tokenizer_path: bert-base-uncased
+      beautify_intents: true
+
+eval_dataset:
+  class_path: text_classification.top_datamodule.Top
+  init_args:
+    mode: test
+    data_path: data/top/top-dataset-semantic-parsing
+    tokenizer_path: bert-base-uncased
+    beautify_intents: true
+
+test_seeds:  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+test_id_ratios: [0.50]
+val_seeds: [0]
+val_id_ratios: [0.25, 0.5, 0.75]
+
+val_ratio: 0.1
+val_split_seed: 42
+ood_labels: []
+mode: test
+
+model_path: checkpoints/top_cs/ts_{}_tr_{}
+name: cs_t50_top
