@@ -11,6 +11,6 @@ from .mixdiff_mls_text import (
     MixDiffMaxLogitScoreTextZS,
 )
 from .mixdiff_msp_text import (
-    MixDiffMaxSofmaxProbText, 
+    MixDiffMaxSoftmaxProbText, 
     MixDiffMaxSoftmaxProbTextZS,
 )

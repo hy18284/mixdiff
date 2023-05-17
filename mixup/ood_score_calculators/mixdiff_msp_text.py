@@ -7,7 +7,7 @@ from .mixdiff_logit_based_text import MixDiffLogitBasedMixinText
 from .mixdiff_logit_based_text_zs import MixDiffLogitBasedMixinTextZS
 
 
-class MixDiffMaxSofmaxProbText(
+class MixDiffMaxSoftmaxProbText(
     MixDiffLogitBasedMixinText,
     OODScoreCalculator,
 ):
