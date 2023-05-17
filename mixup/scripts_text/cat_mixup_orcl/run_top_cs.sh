@@ -25,8 +25,8 @@ do
                                 --gamma $gamma \
                                 --r_ref 0 \
                                 --seed 0 \
-                                --wandb_name debug \
-                                --wandb_project ZOC_debug \
+                                --wandb_name '' \
+                                --wandb_project ZOC \
                                 --device 0 \
                                 --ref_mode oracle \
                                 --model_path checkpoints/clinic150_bert \
