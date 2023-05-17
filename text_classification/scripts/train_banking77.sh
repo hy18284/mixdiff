@@ -4,14 +4,14 @@ for test_seed in 0 1 2 3 4 5 6 7 8 9
 do
     for test_id_ratio in 0.25 0.50 0.75
     do
-        test_n_labels=$(printf "%.0f"  $(echo  "7 * $test_id_ratio" | bc))
+        test_n_labels=$(printf "%.0f"  $(echo  "77 * $test_id_ratio" | bc))
         echo "# of test labels: $test_n_labels"
 
         python -m text_classification.train_text_classifier \
-            --config text_classification/configs/snips_test.yml \
-            --trainer.logger.init_args.name snips_classifier_ts_${test_seed}_tr_${test_id_ratio} \
+            --config text_classification/configs/banking77_test.yml \
+            --trainer.logger.init_args.name banking_classifier_ts_${test_seed}_tr_${test_id_ratio} \
             --model.num_labels $test_n_labels \
-            --model.checkpoint_path checkpoints/snips_cs/ts_${test_seed}_tr_${test_id_ratio} \
+            --model.checkpoint_path checkpoints/banking77_cs/ts_${test_seed}_tr_${test_id_ratio} \
             --data.init_args.class_split_seed $test_seed \
             --data.init_args.seen_class_ratio $test_id_ratio 
 
@@ -28,10 +28,10 @@ do
                 fi
 
                 python -m text_classification.train_text_classifier \
-                    --config text_classification/configs/snips_val.yml \
-                    --trainer.logger.init_args.name snips_classifier_ts_${test_seed}_tr_${test_id_ratio}_vs_${val_seed}_vr_${val_id_ratio} \
+                    --config text_classification/configs/top_val.yml \
+                    --trainer.logger.init_args.name banking_classifier_ts_${test_seed}_tr_${test_id_ratio}_vs_${val_seed}_vr_${val_id_ratio} \
                     --model.num_labels $val_n_labels \
-                    --model.checkpoint_path checkpoints/snips_cs/ts_${test_seed}_tr_${test_id_ratio}_vs_${val_seed}_vr_${val_id_ratio} \
+                    --model.checkpoint_path checkpoints/banking77_cs/ts_${test_seed}_tr_${test_id_ratio}_vs_${val_seed}_vr_${val_id_ratio} \
                     --data.init_args.class_split_seed $val_seed \
                     --data.init_args.seen_class_ratio $val_id_ratio \
                     --data.init_args.train_dataset.init_args.class_split_seed $test_seed \

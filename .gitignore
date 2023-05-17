@@ -7,3 +7,9 @@
 /CLIP
 /charts
 *.xlsx
+/checkpoints
+/ZOC
+/ZOC_debug
+.hypothesis
+/config.yaml
+/scripts
