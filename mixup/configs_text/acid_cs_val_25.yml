@@ -30,7 +30,7 @@ eval_dataset:
     seed: 42
 
 test_seeds:  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-test_id_ratios: [0.50]
+test_id_ratios: [0.25]
 val_seeds: [0]
 val_id_ratios: [0.25, 0.5, 0.75]
 
