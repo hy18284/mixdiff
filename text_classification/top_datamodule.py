@@ -1,3 +1,6 @@
+from typing import (
+    List,
+)
 import pathlib
 import csv
 
@@ -24,10 +27,12 @@ class Top(Dataset):
         path: str = 'data/top/top-dataset-semantic-parsing',
         add_oos: bool = False,
         beautify_intents: bool = True,
+        oos_names: List[str] = [],
     ):
         super().__init__()
         self.data_path = path
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+        self.oos_names += oos_names
 
         if mode == 'train' or mode == 'test':
             file_name = f'{mode}.tsv'
@@ -68,6 +73,17 @@ class Top(Dataset):
                 (query, ' '.join(intent[3:].split('_')))
                 for query, intent in self.data
             ]
+        
+        from collections import Counter
+        from pprint import pprint
+        intents = [
+            intent
+            for query, intent in self.data
+        ]
+        print(mode)
+        pprint(Counter(intents))
+        pprint(len(Counter(intents)))
+        
 
     def __getitem__(self, idx):
         query, intent = self.data[idx]

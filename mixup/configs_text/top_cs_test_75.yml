@@ -1,11 +1,10 @@
 train_dataset:
-  dataset:
-    class_path: text_classification.top_datamodule.Top
-    init_args:
-      mode: train
-      path: data/top/top-dataset-semantic-parsing
-      tokenizer_path: bert-base-uncased
-      beautify_intents: true
+  class_path: text_classification.top_datamodule.Top
+  init_args:
+    mode: train
+    path: data/top/top-dataset-semantic-parsing
+    tokenizer_path: bert-base-uncased
+    beautify_intents: true
 
 eval_dataset:
   class_path: text_classification.top_datamodule.Top

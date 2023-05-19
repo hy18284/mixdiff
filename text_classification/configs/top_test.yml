@@ -72,6 +72,11 @@ data:
         tokenizer_path: 'bert-base-uncased'
         add_oos: false
         beautify_intents: true
+        oos_names:
+          - IN:GET_EVENT_ATTENDEE
+          - IN:UNINTELLIGIBLE
+          - IN:GET_EVENT_ORGANIZER
+          - IN:GET_EVENT_ATTENDEE_AMOUNT
 
     val_dataset:
       class_path: text_classification.top_datamodule.Top
@@ -81,6 +86,11 @@ data:
         tokenizer_path: 'bert-base-uncased'
         add_oos: false
         beautify_intents: true
+        oos_names:
+          - IN:GET_EVENT_ATTENDEE
+          - IN:UNINTELLIGIBLE
+          - IN:GET_EVENT_ORGANIZER
+          - IN:GET_EVENT_ATTENDEE_AMOUNT
 
     test_dataset:
       class_path: text_classification.top_datamodule.Top
@@ -90,6 +100,11 @@ data:
         tokenizer_path: 'bert-base-uncased'
         add_oos: false
         beautify_intents: true
+        oos_names:
+          - IN:GET_EVENT_ATTENDEE
+          - IN:UNINTELLIGIBLE
+          - IN:GET_EVENT_ORGANIZER
+          - IN:GET_EVENT_ATTENDEE_AMOUNT
 
     class_split_seed: null
     seen_class_ratio: null
