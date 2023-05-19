@@ -1,0 +1,41 @@
+train_dataset:
+  class_path: text_classification.class_split_datamodule.ClassSplitWrapper
+  init_args:
+    class_split_seed: null
+    seen_class_ratio: null
+    ood_labels: []
+    val_ratio: null
+    val_split_seed: null
+    mode: null
+    dataset:
+      class_path: text_classification.bankning77_datamodule.Banking77
+      init_args:
+        mode: train
+        tokenizer_path: bert-base-uncased
+        oos_data: null
+        beautify_intents: true
+        val_ratio: 0.1
+        seed: 42
+
+eval_dataset:
+  class_path: text_classification.banking77_datamodule.Banking77
+  init_args:
+    mode: val
+    tokenizer_path: bert-base-uncased
+    oos_data: null
+    beautify_intents: true
+    val_ratio: 0.1
+    seed: 42
+
+test_seeds:  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+test_id_ratios: [0.50]
+val_seeds: [0]
+val_id_ratios: [0.25, 0.5, 0.75]
+
+val_ratio: 0.1
+val_split_seed: 42
+ood_labels: []
+mode: val
+
+model_path: checkpoints/banking77_cs/ts_{}_tr_{}_vs_{}_vr_{}
+name: cs_v50_banking
