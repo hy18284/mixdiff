@@ -2,7 +2,7 @@
 
 for test_seed in 0 1 2 3 4 5 6 7 8 9
 do
-    for test_id_ratio in 0.25 0.50 0.75
+    for test_id_ratio in 0.25 0.5 0.75
     do
         test_n_labels=$(printf "%.0f"  $(echo  "7 * $test_id_ratio" | bc))
         echo "# of test labels: $test_n_labels"

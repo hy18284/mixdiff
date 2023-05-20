@@ -80,6 +80,7 @@ class ClassSplitWrapper(Dataset):
                 self.data.append(pair)
 
         print('Seen labels', self.seen_labels)
+        print('Seen classes', self.intents)
         print('# of seen labels:', len(self.seen_labels))
 
     def __getitem__(self, idx):

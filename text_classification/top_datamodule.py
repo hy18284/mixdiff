@@ -14,11 +14,6 @@ from transformers import AutoTokenizer
 
 
 class Top(Dataset):
-    oos_names = [
-        'IN:UNSUPPORTED_NAVIGATION', 
-        'IN:UNSUPPORTED', 
-        'IN:UNSUPPORTED_EVENT',
-    ]
 
     def __init__(
         self,
@@ -32,7 +27,7 @@ class Top(Dataset):
         super().__init__()
         self.data_path = path
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-        self.oos_names += oos_names
+        self.oos_names = oos_names
 
         if mode == 'train' or mode == 'test':
             file_name = f'{mode}.tsv'
@@ -73,17 +68,6 @@ class Top(Dataset):
                 (query, ' '.join(intent[3:].split('_')))
                 for query, intent in self.data
             ]
-        
-        from collections import Counter
-        from pprint import pprint
-        intents = [
-            intent
-            for query, intent in self.data
-        ]
-        print(mode)
-        pprint(Counter(intents))
-        pprint(len(Counter(intents)))
-        
 
     def __getitem__(self, idx):
         query, intent = self.data[idx]
