@@ -8,7 +8,7 @@ train_dataset:
     val_split_seed: null
     mode: null
     dataset:
-      class_path: text_classification.bankning77_datamodule.Banking77
+      class_path: text_classification.banking77_datamodule.Banking77
       init_args:
         mode: train
         tokenizer_path: bert-base-uncased
