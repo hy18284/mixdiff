@@ -88,10 +88,10 @@ class ClassSplitDataConnector:
                     mode='train'
                 )
 
-                dataset = ClassSplitWrapper(
+                eval_dataset = ClassSplitWrapper(
                     dataset=eval_dataset,
-                    class_split_seed=val_seed,
-                    seen_class_ratio=val_id_ratio,
+                    class_split_seed=test_seed,
+                    seen_class_ratio=test_id_ratio,
                     ood_labels=args.ood_labels,
                 )
 
@@ -101,7 +101,7 @@ class ClassSplitDataConnector:
                     val_seed,
                     val_id_ratio,
                 )
-                yield train_dataset, dataset, model_path
+                yield train_dataset, eval_dataset, model_path
 
     def _iterate_test_datasets(self):
         for test_seed in self.config['test_seeds']:
@@ -120,17 +120,11 @@ class ClassSplitDataConnector:
                     ood_labels=args.ood_labels,
                 )
 
-                dataset = ClassSplitWrapper(
-                    dataset=eval_dataset,
-                    class_split_seed=test_seed,
-                    seen_class_ratio=test_id_ratio,
-                    ood_labels=args.ood_labels,
-                )
                 model_path = args.model_path.format(
                     test_seed,
                     test_id_ratio,
                 )
-                yield train_dataset, dataset, model_path
+                yield train_dataset, eval_dataset, model_path
 
     @property     
     def name(self):
