@@ -56,7 +56,7 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
   default_root_dir: null
 model:
-  num_labels: 16
+  num_labels: 12
   model_path: bert-base-uncased
   lr: 1.0e-05
   checkpoint_path: checkpoints/top_cs
@@ -82,10 +82,13 @@ data:
             add_oos: false
             beautify_intents: true
             oos_names:
-             - IN:GET_EVENT_ATTENDEE
-             - IN:UNINTELLIGIBLE
-             - IN:GET_EVENT_ORGANIZER
-             - IN:GET_EVENT_ATTENDEE_AMOUNT
+              - IN:GET_EVENT_ATTENDEE
+              - IN:UNINTELLIGIBLE
+              - IN:GET_EVENT_ORGANIZER
+              - IN:GET_EVENT_ATTENDEE_AMOUNT
+              - IN:UNSUPPORTED_NAVIGATION
+              - IN:UNSUPPORTED
+              - IN:UNSUPPORTED_EVENT
 
     val_dataset:
       class_path: text_classification.class_split_datamodule.ClassSplitWrapper
@@ -105,10 +108,13 @@ data:
             add_oos: false
             beautify_intents: true
             oos_names:
-             - IN:GET_EVENT_ATTENDEE
-             - IN:UNINTELLIGIBLE
-             - IN:GET_EVENT_ORGANIZER
-             - IN:GET_EVENT_ATTENDEE_AMOUNT
+              - IN:GET_EVENT_ATTENDEE
+              - IN:UNINTELLIGIBLE
+              - IN:GET_EVENT_ORGANIZER
+              - IN:GET_EVENT_ATTENDEE_AMOUNT
+              - IN:UNSUPPORTED_NAVIGATION
+              - IN:UNSUPPORTED
+              - IN:UNSUPPORTED_EVENT
 
     test_dataset:
       class_path: text_classification.top_datamodule.Top
@@ -123,6 +129,9 @@ data:
           - IN:UNINTELLIGIBLE
           - IN:GET_EVENT_ORGANIZER
           - IN:GET_EVENT_ATTENDEE_AMOUNT
+          - IN:UNSUPPORTED_NAVIGATION
+          - IN:UNSUPPORTED
+          - IN:UNSUPPORTED_EVENT
 
     class_split_seed: null
     seen_class_ratio: null
