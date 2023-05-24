@@ -1,4 +1,4 @@
-# MixDiff
+# Interpolation-based Training-free Out-of-distribution Detection
 This repossitory contains the implementation of MixDiff framework.
 
 # Setup
