@@ -2,7 +2,7 @@
 
 This repossitory contains the implementation of MixDiff framework.
 
-![overall figure](assets/overal_figure.png)
+<!-- ![overall figure](assets/overal_figure.png) -->
 
 # Setup
 
