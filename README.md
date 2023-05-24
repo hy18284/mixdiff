@@ -106,7 +106,7 @@ bash mixup/scripts/run_zoc.sh
 
 ## Train Intent Classification Models
 
-Run the script after replacing `DATASET_NAME` with one of the following names: `clinic150`, `banking77`, `acid`, `top`. This will train intent classification models for MixDiff hyperparameter search as well as the final OOS evaluation.
+Run the script after replacing `DATASET_NAME` with one of the following names: `clinic150`, `banking77`, `acid`, `top`. This will train intent classification models for MixDiff hyperparameter search as well as the final OOS detection performance evaluation.
 
 ```bash
 bash text_classification/scripts/train_{DATASET_NAME}.sh
