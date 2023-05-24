@@ -18,22 +18,22 @@ Place `CLIP-ViT-B32` checkpoint under the directory `trained_models/ViT-B32` aft
 
 Place the datasets as below:
 
-* Caltech101
+* `Caltech101`
     * Unzip the dataset under the directory `data/caltech101`.
 
-* CIFAR10
+* `CIFAR10`
     * The dataset is automatically downloaded when the code is run.
 
-* CIFAR100
+* `CIFAR100`
     * The dataset is automatically downloaded when the code is run.
 
-* CIFAR10+
+* `CIFAR10+`
     * The dataset is automatically downloaded when the code is run.
 
-* CIFAR50+
+* `CIFAR50+`
     * The dataset is automatically downloaded when the code is run.
 
-* TinyImageNet
+* `TinyImageNet`
     * Place the dataset such that train, val, test directories are under the directory `data/tiny-imagenet-200`.
 
 ## Search hyperparameters on Caltech101
@@ -41,7 +41,6 @@ Place the datasets as below:
 Run the script below after replacing `OOD_METHOD` with one of the following names: `energy`, `entropy`, `mls`, `msp`.
 
 ```bash
-
 bash mixup/scripts/run_caltech101_{OOD_METHOD}.sh
 
 ```
@@ -74,13 +73,13 @@ bash mixup/scripts/run_mixdiff_lge_avg_zoc.sh
 
 ## Run Baselines
 
-Run MLS, MSP, Energy and entropy OOD detection baselines by using the script below:
+Run MLS, MSP, Energy and entropy OOD detection baselines by using the script below.
 
 ```bash
 bash mixup/scripts/run_baselines.sh
 ```
 
-Run ZOC OOD detection baseline by using the script below:
+Run ZOC OOD detection baseline by using the script below.
 
 ```bash
 bash mixup/scripts/run_zoc.sh
@@ -90,19 +89,19 @@ bash mixup/scripts/run_zoc.sh
 
 ## Datasets
 
-* ACID
+* `ACID`
     * Download the dataset from [the official repository.](https://github.com/AmFamMLTeam/ACID)
     * Place `data/acid/customer_training.csv` and `data/acid/customer_testing.csv` under the directory `data/acid/`.
 
-* CLINIC150
+* `CLINIC150`
     * Download the dataset from [the official repository](https://github.com/clinc/oos-eval/tree/master/data).
     * Place `data_full.json` under the directory `data/clinc150`.
 
-* TOP
+* `TOP`
     * Download the dataset from the [link](http://fb.me/semanticparsingdialog) provided in the paper.
     * Unzip the file under the directory `data/top`.
 
-* Banking77
+* `Banking77`
     * This dataset is automatically downloaded when the code is run.
 
 ## Train Intent Classification Models
@@ -183,7 +182,7 @@ done
 
 ## Run Baselines
 
-Run MLS, MSP, Energy and entropy OOS detection baselines by using the script below:
+Run MLS, MSP, Energy and entropy OOS detection baselines by using the script below.
 
 ```bash
 bash mixup/scripts_text/run_cs_baselines_test.sh
