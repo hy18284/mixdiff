@@ -34,7 +34,7 @@ Place the datasets as below:
     * The dataset is automatically downloaded when the code is run.
 
 * `TinyImageNet`
-    * Place the dataset such that train, val, test directories are under the directory `data/tiny-imagenet-200`.
+    * Run the following script: `tinyimagenet.sh`.
 
 ## Search hyperparameters on Caltech101
 
