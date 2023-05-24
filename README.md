@@ -187,3 +187,7 @@ Run MLS, MSP, Energy and entropy OOS detection baselines by using the script bel
 ```bash
 bash mixup/scripts_text/run_cs_baselines_test.sh
 ```
+
+# Acknowledgments
+
+We built our experiment pipeline from the codebase of [ZOC repository](https://github.com/sesmae/zoc). We thank the authors of ["Zero-Shot Out-of-Distribution Detection Based on the Pre-trained Model CLIP"](https://arxiv.org/pdf/2109.02748.pdf) for sharing thier code.
