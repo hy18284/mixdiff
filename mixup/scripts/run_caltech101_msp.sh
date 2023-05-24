@@ -17,7 +17,7 @@ do
                         --r $r \
                         --seed 0 \
                         --wandb_name paper_v1 \
-                        --device 7 \
+                        --device 0 \
                         --gamma $gamma \
                         --score_calculator.class_path mixup.ood_score_calculators.$method \
                         --score_calculator.init_args.batch_size 2048 \

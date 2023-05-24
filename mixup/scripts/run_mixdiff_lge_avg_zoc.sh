@@ -26,7 +26,7 @@ do
                             --gamma $gamma \
                             --seed 0 \
                             --wandb_name plan_b_hp_partial \
-                            --device 6 \
+                            --device 0 \
                             --max_samples 200 \
                             --score_calculator.class_path mixup.ood_score_calculators.$method \
                             --score_calculator.init_args.batch_size 150 \

@@ -17,7 +17,7 @@ do
             --gamma 2.0 \
             --seed 0 \
             --wandb_name val_caltech \
-            --device 1 \
+            --device 0 \
             --score_calculator.class_path mixup.ood_score_calculators.$method \
             --score_calculator.init_args.batch_size 12288 \
             --datamodule.class_path mixup.ood_datamodules.$dataset

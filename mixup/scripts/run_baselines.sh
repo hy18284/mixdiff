@@ -20,7 +20,7 @@ do
             --r 7 \
             --seed 0 \
             --wandb_name baseline \
-            --device 7 \
+            --device 0 \
             --gamma 1.0 \
             --score_calculator.class_path mixup.ood_score_calculators.$method \
             --score_calculator.init_args.batch_size 2048 \
