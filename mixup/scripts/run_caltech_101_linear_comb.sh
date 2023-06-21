@@ -17,7 +17,7 @@ do
         for dataset in \
             Caltech101OODDataset
         do
-            for gamma_base in 0.0 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0
+            for gamma_base in 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0
             do
                 for gamma_exp in -4 -3 -2 -1 0 1 2 3 4
                 do
@@ -33,7 +33,7 @@ do
                         --r 1 \
                         --seed 0 \
                         --wandb_project ZOC \
-                        --wandb_name "baseline" \
+                        --wandb_name baseline \
                         --device 0 \
                         --gamma $gamma \
                         --score_calculator.class_path mixup.ood_score_calculators.LinearCombination \
