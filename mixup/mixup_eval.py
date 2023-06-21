@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument('--r', type=int, default=3)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--wandb_name', type=str, default='mixup_v1')
+    parser.add_argument('--wandb_project', type=str, default='ZOC')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--abs', action='store_true')
     parser.add_argument('--top_1', action='store_true')
@@ -55,7 +56,7 @@ if __name__ == '__main__':
     wandb.init(
         config=args,
         name=f'{args.wandb_name}_{score_calculator}_{datamodule}',
-        project='ZOC',
+        project=args.wandb_project,
     )
     wandb.config.method = str(score_calculator)
     wandb.config.dataset = str(datamodule)
