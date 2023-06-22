@@ -1,16 +1,16 @@
 #!/bin/bash
 
-batch_size=1024
+batch_size=128
 
 for base_method in \
-    MixDiffEntropy \
     MixDiffMaxSofmaxProb \
+    MixDiffEntropy \
     MixDiffEnergy \
     MixDiffMaxLogitScore 
 do 
     for aux_method in \
-        MixDiffEntropy \
         MixDiffMaxSofmaxProb \
+        MixDiffEntropy \
         MixDiffEnergy \
         MixDiffMaxLogitScore 
     do 

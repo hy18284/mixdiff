@@ -74,6 +74,9 @@ class LinearCombination(OODScoreCalculator):
     ):
         base_kwargs, aux_kwargs = kwargs_pair
         base_score = self.base_ood_fn.calculate_base_scores(**base_kwargs)
+        base_score = base_score.to(torch.double)
         aux_score = self.aux_ood_fn.calculate_base_scores(**aux_kwargs)
-        return base_score + self.gamma * aux_score
+        aux_score = aux_score.to(torch.double)
+        scores = base_score + self.gamma * aux_score
+        return scores
         
