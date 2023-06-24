@@ -52,7 +52,7 @@ do
                         --score_calculator.init_args.aux_ood_score_fn.init_args.utilize_mixup false \
                         --score_calculator.init_args.aux_ood_score_fn.init_args.add_base_score true \
                         --score_calculator.init_args.gamma  $gamma \
-                        --datamodule.class_path mixup.ood_datamodules.$dataset \
+                        --datamodule.class_path mixup.ood_datamodules.ClassSplitOODDataset \
                         --datamodule.init_args.config_path mixup/configs_text/clinic150_cs_val_$id_rate.yml \
                         --mixup_operator.class_path mixup.mixup_operators.ConcatMixup \
                         --mixup_operator.init_args.ref_pos both
