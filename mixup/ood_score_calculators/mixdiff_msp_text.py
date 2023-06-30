@@ -18,10 +18,19 @@ class MixDiffMaxSoftmaxProbText(
         known_logits,
         unknown_logits,
     ):
-        known_probs = torch.softmax(known_logits, dim=-1)
+        if self.intermediate_state == 'logit':
+            known_probs = torch.softmax(known_logits, dim=-1)
+        elif self.intermediate_state == 'softmax':
+            known_probs = known_logits
+        else:
+            raise ValueError
+
         known_max, _ = torch.max(known_probs, dim=-1) 
 
-        unknown_probs = torch.softmax(unknown_logits, dim=-1)
+        if self.intermediate_state == 'logit':
+            unknown_probs = torch.softmax(unknown_logits, dim=-1)
+        else:
+            unknown_probs = unknown_logits
         unknown_max, _ = torch.max(unknown_probs, dim=-1) 
 
         mixdiff = -(unknown_max - known_max)
@@ -34,7 +43,13 @@ class MixDiffMaxSoftmaxProbText(
         **kwargs,
     ):
         if self.add_base_score:
-            probs = torch.softmax(logits, dim=-1)
+            if self.intermediate_state == 'logit':
+                probs = torch.softmax(logits, dim=-1)
+            elif self.intermediate_state == 'softmax':
+                probs = logits
+            else:
+                raise ValueError
+
             max_probs, _ = torch.max(probs, dim=-1)
         else:
             max_probs = torch.zeros_like(logits[..., -1])

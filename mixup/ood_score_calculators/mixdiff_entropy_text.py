@@ -18,11 +18,11 @@ class MixDiffEntropyText(
         unknown_logits,
     ):
         known_logits = known_logits.float()
-        known_probs = torch.softmax(known_logits, dim=-1)
+        known_probs = self._convert_to_probs(known_logits)
         known_entropy = Categorical(known_probs).entropy()
 
         unknown_logits = unknown_logits.float()
-        unknown_probs = torch.softmax(unknown_logits, dim=-1)
+        unknown_probs = self._convert_to_probs(unknown_logits)
         unknown_entropy = Categorical(unknown_probs).entropy()
 
         mixdiff = unknown_entropy - known_entropy
@@ -36,8 +36,17 @@ class MixDiffEntropyText(
     ):
         if self.add_base_score:
             logits = logits.float()
-            probs = torch.softmax(logits, dim=-1)
+            probs = self._convert_to_probs(logits)
             entropy = Categorical(probs).entropy()
         else:
             entropy = torch.zeros_like(logits[..., -1])
         return entropy
+    
+    def _convert_to_probs(self, logits):
+        if self.intermediate_state == 'logit':
+            probs = torch.softmax(logits, dim=-1)
+        elif self.intermediate_state == 'softmax':
+            probs = logits
+        else:
+            raise ValueError
+        return probs
