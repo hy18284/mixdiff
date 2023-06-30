@@ -108,7 +108,6 @@ if __name__ == '__main__':
     aurocs = []
     fprs = []
     fnrs = []
-    mixdiff_scores = []
     known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
     unknown_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
     wandb.Table.MAX_ROWS = 200000
@@ -152,6 +151,8 @@ if __name__ == '__main__':
             print(rates)
             targets = []
             scores = []
+            mixdiff_scores_log = []
+            base_scores_log = []
 
             loader = datamodule.construct_loader(batch_size=batch_size)
             score_calculator.on_eval_start(
@@ -300,7 +301,8 @@ if __name__ == '__main__':
                 base_scores = score_calculator.calculate_base_scores(**image_kwargs)
 
                 if score_calculator.utilize_mixup:
-                    mixdiff_scores += (args.gamma * dists).tolist()[:orig_n_samples]
+                    mixdiff_scores_log += (args.gamma * dists).tolist()[:orig_n_samples]
+                    base_scores_log += base_scores.tolist()[:orig_n_samples]
                     dists = base_scores + args.gamma * dists
                 else:
                     dists = base_scores
@@ -317,13 +319,13 @@ if __name__ == '__main__':
             score_calculator.on_eval_end(iter_idx=iter_idx)
 
             if not score_calculator.utilize_mixup:
-                mixdiff_scores = itertools.repeat(0.0, len(scores))
+                mixdiff_scores_log = itertools.repeat(0.0, len(scores))
             table = wandb.Table(
                 columns=['id', 'ood_score','base_score', 'mixdiff_score', 'is_ood'],
                 data=[
-                    (i, score, score - mixdiff_score, mixdiff_score, target)
-                    for i, (score, mixdiff_score, target) 
-                    in enumerate(zip(scores, mixdiff_scores, targets))
+                    (i, score, base_score, mixdiff_score, target)
+                    for i, (score, base_score, mixdiff_score, target) 
+                    in enumerate(zip(scores, base_scores_log, mixdiff_scores_log, targets))
                 ]
             )
             wandb.log({f'ood_scores_{iter_idx}': table})
