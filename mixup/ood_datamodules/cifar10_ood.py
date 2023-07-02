@@ -75,7 +75,7 @@ class CIFAR10OODDataset(BaseOODDataModule):
             for loader in self.cifar10_loaders_train.values():
                 loader.dataset.transform = train_transform
 
-    def get_splits(self, n_samples_per_class: int, seed: int):
+    def get_splits(self, n_samples_per_class: int, seed: int, n_ref_samples: int):
         for i in range(len(self.splits)):
             seen_class_names = self.get_seen_class_names(i)
             given_images = self.sample_given_images(
@@ -85,7 +85,12 @@ class CIFAR10OODDataset(BaseOODDataModule):
             )
             seen_class_idx = self.convert_names_to_idx(seen_class_names)
 
-            yield seen_class_names, seen_class_idx, given_images
+            if self.ref_mode in ('oracle', 'in_batch'):
+                ref_images = None
+            else:
+                raise ValueError()
+
+            yield seen_class_names, seen_class_idx, given_images, ref_images, None
 
     def sample_given_images(
         self, 

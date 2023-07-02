@@ -4,3 +4,4 @@ from .string_mixup import StringMixup
 from .split_mixup import SplitMixup
 from .cut_mixup import CutMixup
 from .concat_mixup import ConcatMixup
+from .interpolation_mixup import InterpolationMixup

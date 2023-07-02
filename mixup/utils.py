@@ -1,6 +1,8 @@
 import itertools
 
 import numpy as np
+import torch
+import wandb
 
 
 def log_mixup_samples(
@@ -19,6 +21,23 @@ def log_mixup_samples(
     chosen_images=None, 
 ):
     ref_idx = np.random.randint(0, P)
+
+    if torch.is_tensor(images):
+        images = convert_to_wandb_images(images)
+    if torch.is_tensor(ref_images[0]):
+        ref_images = [
+            convert_to_wandb_images(ref)
+            for ref in ref_images
+        ]
+    if torch.is_tensor(known_mixup):
+        known_mixup = convert_to_wandb_images(known_mixup)
+    if torch.is_tensor(unknown_mixup):
+        unknown_mixup = convert_to_wandb_images(unknown_mixup)
+    if torch.is_tensor(chosen_images):
+        chosen_images = [
+            convert_to_wandb_images(chosen)
+            for chosen in chosen_images
+        ]
     
     if known_mixup is not None:
         known_idx = np.random.randint(0, M)
@@ -48,16 +67,6 @@ def log_mixup_samples(
         unknown_mixup_arr[:] = unknown_mixup
         unknown_mixup_arr = unknown_mixup_arr.reshape(N, P, R)
 
-        # ref_arr = np.empty(len(ref_images), dtype='object')
-        # ref_arr[:] = ref_images
-        # ref_arr = ref_arr.reshape(N, P)
-        # from pprint import pprint
-        # pprint('ref')
-        # pprint(ref_images)
-        # pprint('unk')
-        # pprint(unknown_mixup_arr)
-        # pprint('####')
-
         unknown_rows = zip(
             itertools.repeat(images[0], R),
             itertools.repeat(ref_images[0][ref_idx], R),
@@ -68,6 +77,15 @@ def log_mixup_samples(
 
         for row in unknown_rows:
             unknown_mixup_table.add_data(*row)
+
+
+def convert_to_wandb_images(images):
+    images = images.to('cpu')
+    images = [
+        wandb.Image(image)
+        for image in images
+    ]
+    return images
 
 
 def calculate_fnr_at(scores, targets, tpr_percent):

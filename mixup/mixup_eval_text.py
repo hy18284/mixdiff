@@ -176,6 +176,13 @@ if __name__ == '__main__':
                 NC = len(seen_labels)
 
                 labels = labels.to(device)
+                if torch.is_tensor(images):
+                    images = images.to(device)
+                if torch.is_tensor(given_images):
+                    given_images = given_images.to(device)
+                if torch.is_tensor(ref_images):
+                    ref_images = ref_images.to(device)
+
                 image_kwargs = score_calculator.process_images(images)
 
                 if score_calculator.utilize_mixup:

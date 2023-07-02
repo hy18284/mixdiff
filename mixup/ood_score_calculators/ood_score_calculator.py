@@ -41,7 +41,7 @@ class OODScoreCalculator(ABC):
     ):
         pass
     
-    @abstractmethod
+    # TODO: Remove this after integrating text, image code.
     def process_mixup_images(
         self,
         knwon_images,
