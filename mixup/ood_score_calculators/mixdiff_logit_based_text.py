@@ -143,7 +143,6 @@ class MixDiffLogitBasedMixinText:
         self.id_logits = None
         self.oracle_logits = None
         self.mixup_states = None
-        self.oracle_logits = None
         
         wandb.log({
             'oracle_mixup': self.known_mixup_table,

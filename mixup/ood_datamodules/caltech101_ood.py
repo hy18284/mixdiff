@@ -112,19 +112,36 @@ class Caltech101OODDataset(BaseOODDataModule):
             for name, items in self.train_dict.items() 
         }
         
-    def get_splits(self, n_samples_per_class: int, seed: int):
+    def get_splits(self, n_samples_per_class: int, seed: int, n_ref_samples: int):
         for i in range(len(self.seen_classes)):
             seen_class_names = self.seen_classes[i]
             seen_class_idx = [self.class2idx[name] for name in seen_class_names]
             seen_class_idx = torch.tensor(seen_class_idx)
-            given_images = self.sample_given_images(
+
+            id_imgs_per_class = self.sample_given_images(
                 seen_class_names=seen_class_names,
-                n_samples_per_class=n_samples_per_class,
+                n_samples_per_class=n_samples_per_class + n_samples_per_class,
                 seed=seed,
             )
+
+            ref_images, given_images = [], []
+            for id_images in id_imgs_per_class:
+                ref_images.append(id_images[n_samples_per_class:])
+                given_images.append(id_images[:n_samples_per_class])
+            given_images = torch.stack(given_images)
+
             seen_class_names = [name.replace('_', ' ') for name in seen_class_names]
 
-            yield seen_class_names, seen_class_idx, given_images
+            if self.ref_mode in ('oracle', 'in_batch'):
+                ref_images = None
+            elif self.ref_mode == 'rand_id':
+                ref_images = torch.cat(ref_images, dim=0)
+                ref_images = random.Random(seed).choices(ref_images, k=n_ref_samples)
+                ref_images = torch.stack(ref_images)
+            else:
+                raise ValueError()
+
+            yield seen_class_names, seen_class_idx, given_images, ref_images, None
 
     def sample_given_images(
         self, 

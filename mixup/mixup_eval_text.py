@@ -4,6 +4,7 @@ import itertools
 from typing import (
     List,
     Union,
+    Optional,
 )
 
 import torch
@@ -44,11 +45,12 @@ def parse_args():
     parser.add_argument('--abs', action='store_true')
     parser.add_argument('--top_1', action='store_true')
     parser.add_argument('--gamma', type=float, default=1.0)
-    parser.add_argument('--max_samples', type=int, default=None, required=False)
+    parser.add_argument('--max_samples', type=Optional[int], default=None, required=False)
     parser.add_argument('--model_path', type=str)
     parser.add_argument('--ref_mode', type=str, default='in_batch')
     parser.add_argument('--fnr_at', type=float, default=0.95)
     parser.add_argument('--fpr_at', type=float, default=0.95)
+    parser.add_argument('--log_interval', type=Optional[int], default=None)
     parser.add_subclass_arguments(OODScoreCalculator, 'score_calculator')
     parser.add_subclass_arguments(BaseOODDataModule, 'datamodule')
     parser.add_subclass_arguments(BaseMixupOperator, 'mixup_operator')
@@ -170,8 +172,12 @@ if __name__ == '__main__':
             for i, (images, labels) in enumerate(tqdm(loader)):
                 orig_n_samples = len(images)
                 if len(images) != batch_size and score_calculator.utilize_mixup:
-                    dummy = [images[0]] * (batch_size - len(images))
-                    images += dummy
+                    if torch.is_tensor(images):
+                        dummy = images[:1].expand((batch_size - len(images)), -1, -1, -1)
+                        images = torch.cat([images, dummy], dim=0)
+                    else:
+                        dummy = [images[0]] * (batch_size - len(images))
+                        images += dummy
 
                 NC = len(seen_labels)
 
@@ -207,11 +213,16 @@ if __name__ == '__main__':
                             # (1 * P * R)
                             unknown = mixup_fn(
                                 references=chosen,
-                                targets=[image],
+                                targets=image.unsqueeze(0) if torch.is_tensor(image) else [image],
                                 rates=rates,
                                 seed=seed,
                             )
-                            unknown_mixup += unknown
+                            if torch.is_tensor(unknown):
+                                unknown_mixup.append(unknown)
+                            else:
+                                unknown_mixup += unknown
+                        if torch.is_tensor(unknown_mixup[0]):
+                            unknown_mixup = torch.cat(unknown_mixup, dim=0)
                         known_mixup = None
                     elif args.ref_mode == 'rand_id':
                         # (N), (P) -> (N, P, R)
@@ -220,35 +231,41 @@ if __name__ == '__main__':
                             # (1 * P * R)
                             unknown = mixup_fn(
                                 references=ref_images,
-                                targets=[image],
+                                targets=image.unsqueeze(0) if torch.is_tensor(image) else [image],
                                 rates=rates,
                                 seed=seed,
                             )
-                            unknown_mixup += unknown
+                            if torch.is_tensor(unknown):
+                                unknown_mixup.append(unknown)
+                            else:
+                                unknown_mixup += unknown
+                        if torch.is_tensor(unknown_mixup[0]):
+                            unknown_mixup = torch.cat(unknown_mixup, dim=0)
                         known_mixup = None
 
-                    if args.ref_mode == 'oracle':
-                        ref_images_log = chosen_images
-                    elif args.ref_mode == 'in_batch':
-                        ref_images_log = list(itertools.repeat(images, N))
-                    elif args.ref_mode == 'rand_id':
-                        ref_images_log = list(itertools.repeat(ref_images, P))
+                    if args.log_interval is not None and i % args.log_interval == 0:
+                        if args.ref_mode == 'oracle':
+                            ref_images_log = chosen_images
+                        elif args.ref_mode == 'in_batch':
+                            ref_images_log = list(itertools.repeat(images, N))
+                        elif args.ref_mode == 'rand_id':
+                            ref_images_log = list(itertools.repeat(ref_images, P))
 
-                    log_mixup_samples(
-                        ref_images=ref_images_log,
-                        known_mixup_table=known_mixup_table, 
-                        unknown_mixup_table=unknown_mixup_table, 
-                        known_mixup=known_mixup,
-                        unknown_mixup=unknown_mixup, 
-                        images=images, 
-                        chosen_images=chosen_images, 
-                        rates=rates, 
-                        j=iter_idx,
-                        N=N,
-                        P=P,
-                        R=R,
-                        M=M,
-                    )
+                        log_mixup_samples(
+                            ref_images=ref_images_log,
+                            known_mixup_table=known_mixup_table, 
+                            unknown_mixup_table=unknown_mixup_table, 
+                            known_mixup=known_mixup,
+                            unknown_mixup=unknown_mixup, 
+                            images=images, 
+                            chosen_images=chosen_images, 
+                            rates=rates, 
+                            j=iter_idx,
+                            N=N,
+                            P=P,
+                            R=R,
+                            M=M,
+                        )
                     
                     # (N * M * P * R * NC) -> (N, M, P, R, NC) -> (N, P, R, NC) -> (N * P * R * NC)
                     known_logits = score_calculator.process_mixed_oracle(
@@ -363,15 +380,16 @@ if __name__ == '__main__':
             f'fnr{args.fnr_at}': fnr_at,
         })
     
-    if args.ref_mode == 'in_batch':
-        wandb.log({
-            'oracle_mixup': known_mixup_table,
-            'target_mixup': unknown_mixup_table,
-        })
-    else:
-        wandb.log({
-            'target_mixup': unknown_mixup_table,
-        })
+    if args.log_interval is not None:
+        if args.ref_mode == 'in_batch':
+            wandb.log({
+                'oracle_mixup': known_mixup_table,
+                'target_mixup': unknown_mixup_table,
+            })
+        else:
+            wandb.log({
+                'target_mixup': unknown_mixup_table,
+            })
 
     print('all auc scores:', aurocs)
     avg_auroc = np.mean(aurocs)

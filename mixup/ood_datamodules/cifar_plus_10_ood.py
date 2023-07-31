@@ -86,17 +86,32 @@ class CIFARPlus10OODDataset(BaseOODDataModule):
         }
         self.cur_loader_idx = 0
 
-    def get_splits(self, n_samples_per_class: int, seed: int):
+    def get_splits(self, n_samples_per_class: int, seed: int, n_ref_samples: int):
         for _ in range(len(self.out_datasets)):
             seen_class_names = self.seen_class_names
-            given_images = self.sample_given_images(
+            id_imgs_per_class = self.sample_given_images(
                 self.seen_class_idx.tolist(), 
-                n_samples_per_class,
+                n_samples_per_class + n_ref_samples,
                 seed,
             )
+            ref_images, given_images = [], []
+            for id_images in id_imgs_per_class:
+                ref_images.append(id_images[n_samples_per_class:])
+                given_images.append(id_images[:n_samples_per_class])
+            given_images = torch.stack(given_images)
+
             seen_class_idx = self.seen_class_idx
 
-            yield seen_class_names, seen_class_idx, given_images
+            if self.ref_mode in ('oracle', 'in_batch'):
+                ref_images = None
+            elif self.ref_mode == 'rand_id':
+                ref_images = torch.cat(ref_images, dim=0)
+                ref_images = random.Random(seed).choices(ref_images, k=n_ref_samples)
+                ref_images = torch.stack(ref_images)
+            else:
+                raise ValueError()
+
+            yield seen_class_names, seen_class_idx, given_images, ref_images, None
 
     def sample_given_images(
         self, 
