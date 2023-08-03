@@ -36,7 +36,7 @@ class MixDiffEntropy(
     ):
         if self.add_base_score:
             logits = logits.float()
-            probs = torch.softmax(logits, dim=-1)
+            probs = self._process_logits(logits)
             entropy = Categorical(probs).entropy()
         else:
             entropy = torch.zeros_like(logits[..., -1])
