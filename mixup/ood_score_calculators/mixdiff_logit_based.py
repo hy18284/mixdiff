@@ -145,6 +145,7 @@ class MixDiffLogitBasedMixin:
         image_embeds /= torch.norm(image_embeds, dim=-1, keepdim=True)
         logit_scale = self.clip_model.logit_scale.exp()
         logits = logit_scale * image_embeds @ self.prompts_embeds.t()
+        logits = logits.float()
 
         if self.intermediate_state == 'softmax':
             logits = torch.softmax(logits, dim=-1)
@@ -281,7 +282,7 @@ class MixDiffLogitBasedMixin:
             split_logits = logit_scale * image_embeds @ self.prompts_embeds.t()
             logits_list.append(split_logits) 
         
-        logits = torch.cat(logits_list, dim=0)
+        logits = torch.cat(logits_list, dim=0).float()
         if self.intermediate_state == 'softmax':
             logits = torch.softmax(logits, dim=-1)
         return logits
