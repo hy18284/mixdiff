@@ -6,11 +6,14 @@ class BaseOODDataModule(ABC):
         self._ref_mode = ref_mode
 
     @abstractmethod
-    def get_splits(self, n_samples_per_class: int, seed: int):
-        pass
-
-    @abstractmethod
-    def construct_loader(self, batch_size: int, shuffle: bool = True):
+    def get_splits(
+        self, 
+        n_samples_per_class: int, 
+        seed: int, 
+        n_ref_samples: int,
+        batch_size: int,
+        shuffle: bool = True,
+    ):
         pass
 
     @abstractmethod
@@ -25,3 +28,6 @@ class BaseOODDataModule(ABC):
     def ref_mode(self, ref_mode: str) -> str:
         self._ref_mode = ref_mode
         
+    @property
+    def flatten(self) -> str:
+        return False

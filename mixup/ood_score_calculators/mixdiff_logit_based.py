@@ -4,20 +4,20 @@ from typing import (
 
 import torch
 import torch.nn.functional as F
-from clip.simple_tokenizer import SimpleTokenizer as clip_tokenizer
-import clip
 from tqdm import tqdm
 import wandb
 
 from .ood_score_calculator import OODScoreCalculator
 from ..mixup_operators.base_mixup_operator import BaseMixupOperator
 from ..utils import log_mixup_samples
+from .backbones.base_backbone import BaseBackbone
 
 
 class MixDiffLogitBasedMixin:
     def __init__(
         self,
         batch_size: int,
+        backbone: BaseBackbone,
         utilize_mixup: bool = True,
         add_base_score: bool = True,
         selection_mode: str = 'argmax',
@@ -26,6 +26,7 @@ class MixDiffLogitBasedMixin:
         oracle_sim_temp: float = 1.0,
         log_interval: Optional[int] = None,
     ):
+        self.backbone = backbone
         self.batch_size = batch_size
         self.utilize_mixup = utilize_mixup
         self.add_base_score = add_base_score
@@ -42,13 +43,7 @@ class MixDiffLogitBasedMixin:
         assert self.oracle_sim_mode in ('uniform', 'l2', 'dot', 'cosine_sim')
     
     def load_model(self, backbone_name, device):
-        self.clip_model, _ = clip.load(
-            backbone_name, 
-            device=device, 
-            download_root='trained_models'
-        )
-        self.clip_model.eval()
-        self.cliptokenizer = clip_tokenizer()
+        self.backbone.load_model(backbone_name, device)
         self.device = device
 
     def on_eval_start(
@@ -66,18 +61,21 @@ class MixDiffLogitBasedMixin:
         if ref_images is not None:
             ref_images = ref_images.to(self.device)
 
-        seen_descriptions = [f"This is a photo of a {label}" for label in seen_labels]
-        prompts_ids = [clip.tokenize(prompt) for prompt in seen_descriptions]
-        prompts_ids = torch.cat(prompts_ids, dim=0).to(self.device)
-        prompts_ids = prompts_ids.to(self.device)
-        self.prompts_embeds = self.clip_model.encode_text(prompts_ids)
-        self.prompts_embeds /= torch.norm(self.prompts_embeds, dim=-1, keepdim=True)
-        self.seen_labels = seen_labels
+        self.backbone.on_eval_start(
+            seen_labels,
+            given_images, 
+            mixup_fn,
+            ref_images,
+            rates,
+            seed,
+            iter_idx,
+            model_path,
+        )
 
         if self.selection_mode in ('euclidean', 'dot') or self.oracle_sim_mode != 'uniform':
             NC, M, C, H, W = given_images.size()
             given_images_flat = given_images.view(-1, C, H, W)
-            self.id_logits = self._process_mixup_images(given_images_flat)
+            self.id_logits = self._process_images(given_images_flat)
 
         self.oracle_logits = [] 
         if self.ref_mode == 'oracle' or self.ref_mode == 'rand_id':
@@ -111,7 +109,7 @@ class MixDiffLogitBasedMixin:
                         M=len(given)
                     )
                 # (M * P * R, C, H, W) -> (M * P * R, NC)
-                logits = self._process_mixup_images(mixed)
+                logits = self._process_images(mixed)
                 self.oracle_logits.append(logits)
             # [NC, (M * M * R, NC)] -> (NC, M * M * R, NC)
             self.oracle_logits = torch.stack(self.oracle_logits, dim=0)
@@ -125,8 +123,7 @@ class MixDiffLogitBasedMixin:
         self.R = len(rates)
 
     def on_eval_end(self, iter_idx: int):
-        del self.prompts_embeds
-        del self.seen_labels
+        self.backbone.on_eval_end(iter_idx)
 
         self.id_logits = None
         self.oracle_logits = None
@@ -141,15 +138,7 @@ class MixDiffLogitBasedMixin:
         self,
         images,
     ):
-        image_embeds = self.clip_model.encode_image(images)
-        image_embeds /= torch.norm(image_embeds, dim=-1, keepdim=True)
-        logit_scale = self.clip_model.logit_scale.exp()
-        logits = logit_scale * image_embeds @ self.prompts_embeds.t()
-        logits = logits.float()
-
-        if self.intermediate_state == 'softmax':
-            logits = torch.softmax(logits, dim=-1)
-
+        logits = self._process_images(images)
         kwargs = {
             'logits': logits,
         }
@@ -202,7 +191,7 @@ class MixDiffLogitBasedMixin:
         images,
         **kwrags,
     ):
-        return self._process_mixup_images(images)
+        return self._process_images(images)
     
     @torch.no_grad()
     def process_mixed_oracle(
@@ -217,7 +206,7 @@ class MixDiffLogitBasedMixin:
             # (NC, M * P * R, NC) -> (N, M * P * R, NC)
             mixed_logits = self.oracle_logits[max_indices]
         elif self.ref_mode == 'in_batch':
-            mixed_logits = self._process_mixup_images(images)
+            mixed_logits = self._process_images(images)
         else:
             raise ValueError(f'Invalid ref_mode: {self.ref_mode}')
 
@@ -269,17 +258,14 @@ class MixDiffLogitBasedMixin:
         return mixed_logits
 
     @torch.no_grad()
-    def _process_mixup_images(
+    def _process_images(
         self,
         images,
     ):
         images_list = torch.split(images, self.batch_size, dim=0)
         logits_list = []
         for split_images in images_list:
-            image_embeds = self.clip_model.encode_image(split_images)
-            image_embeds /= torch.norm(image_embeds, dim=-1, keepdim=True)
-            logit_scale = self.clip_model.logit_scale.exp()
-            split_logits = logit_scale * image_embeds @ self.prompts_embeds.t()
+            split_logits = self.backbone.process_images(split_images)
             logits_list.append(split_logits) 
         
         logits = torch.cat(logits_list, dim=0).float()

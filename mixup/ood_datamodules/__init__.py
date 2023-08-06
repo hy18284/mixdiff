@@ -5,6 +5,7 @@ from .cifar_plus_50_ood import CIFARPlus50OODDataset
 from .tiny_imagenet_ood import TinyImageNetOODDataset
 from .caltech101_ood import Caltech101OODDataset
 from .class_split_ood import ClassSplitOODDataset
+from .cross_dataset_ood import CrossDatasetOODDataset
 
 from .clinic150_ood import (
     CLINIC150OODDataset,
