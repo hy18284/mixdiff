@@ -63,6 +63,55 @@ def parse_args():
     return args, classes
 
 
+def calculate_metrics(
+    args,
+    scores,
+    base_scores_log,
+    mixdiff_scores_log,
+    targets,
+    iter_idx,
+):
+    targets, scores = targets[:args.max_samples], scores[:args.max_samples]
+
+    if not args.id_as_neg: 
+        scores = [-score for score in scores]
+        base_scores_log = [-base_score for base_score in base_scores_log]
+        mixdiff_scores_log = [-mixdiff_score for mixdiff_score in mixdiff_scores_log]
+
+    table = wandb.Table(
+        columns=['id', 'ood_score','base_score', 'mixdiff_score', 'is_ood'],
+        data=[
+            (i, score, base_score, mixdiff_score, target)
+            for i, (score, base_score, mixdiff_score, target) 
+            in enumerate(zip(scores, base_scores_log, mixdiff_scores_log, targets))
+        ]
+    )
+    wandb.log({f'ood_scores_{iter_idx}': table})
+
+    ood_scores = [score for score, target in zip(scores, targets) if target == 1]
+    id_scores = [score for score, target in zip(scores, targets) if target == 0]
+    ood_mean = np.mean(ood_scores)
+    id_mean = np.mean(id_scores)
+    print(f'ood_mean: {ood_mean}')
+    print(f'id_mean: {id_mean}')
+    print(f'ood - id mean: {ood_mean - id_mean}')
+
+    if not args.id_as_neg: 
+        results = calculate_ood_metrics(np.array(id_scores), np.array(ood_scores))
+        auroc = results['AUROC']
+        fpr_at = results['FPR']
+        fnr_at = 100.0
+
+    else:
+        auroc = roc_auc_score(targets, scores)
+        fpr_at = calculate_fpr_at(scores, targets, args.fpr_at)
+        fnr_at = calculate_fnr_at(scores, targets, args.fnr_at)
+
+    print(f'auroc: {auroc}')
+
+    return auroc, fpr_at, fnr_at
+
+
 if __name__ == '__main__':
     args, classes = parse_args()
     score_calculator: OODScoreCalculator = classes['score_calculator']
@@ -166,7 +215,6 @@ if __name__ == '__main__':
             mixdiff_scores_log = []
             base_scores_log = []
 
-            print('l_169')
             score_calculator.on_eval_start(
                 seen_labels=copy.deepcopy(seen_labels),
                 given_images=copy.deepcopy(given_images),
@@ -179,7 +227,6 @@ if __name__ == '__main__':
             )
             cur_num_samples = 0
 
-            print('l_182')
             for i, (images, labels) in enumerate(tqdm(loader)):
                 orig_n_samples = len(images)
                 if len(images) != batch_size and score_calculator.utilize_mixup:
@@ -192,7 +239,6 @@ if __name__ == '__main__':
 
                 NC = len(seen_idx)
 
-                print('l_195')
                 labels = labels.to(device)
                 if torch.is_tensor(images):
                     images = images.to(device)
@@ -202,14 +248,12 @@ if __name__ == '__main__':
                     ref_images = ref_images.to(device)
 
                 image_kwargs = score_calculator.process_images(images)
-                print('l_205')
 
                 if score_calculator.utilize_mixup:
                     chosen_images = score_calculator.select_given_images(
                         given_images, 
                         **image_kwargs
                     )
-                    print('l_211')
                     
                     if args.ref_mode == 'in_batch':
                         # O: (N, M), R: (N), T: (N)
@@ -256,7 +300,6 @@ if __name__ == '__main__':
                         if torch.is_tensor(unknown_mixup[0]):
                             unknown_mixup = torch.cat(unknown_mixup, dim=0)
                         known_mixup = None
-                    print('l_259')
 
                     if args.log_interval is not None and i % args.log_interval == 0:
                         if args.ref_mode == 'oracle':
@@ -281,7 +324,6 @@ if __name__ == '__main__':
                             R=R,
                             M=M,
                         )
-                    print('l_284')
                     
                     # (N * M * P * R * NC) -> (N, M, P, R, NC) -> (N, P, R, NC) -> (N * P * R * NC)
                     known_logits = score_calculator.process_mixed_oracle(
@@ -303,7 +345,6 @@ if __name__ == '__main__':
                         known_logits = torch.sum(known_logits, dim=1)
                         knwon_logits = known_logits / (M - 1)
                         known_logits = knwon_logits.view(-1, NC)
-                    print('l_306')
                         
                     # (N * P * R) -> (N * P * R * NC)
                     unknown_logits = score_calculator.process_mixed_target(
@@ -362,53 +403,6 @@ if __name__ == '__main__':
             if not score_calculator.utilize_mixup:
                 mixdiff_scores_log = itertools.repeat(0.0, len(scores))
             
-            def calculate_metrics(
-                args,
-                scores,
-                base_scores_log,
-                mixdiff_scores_log,
-                targets,
-            ):
-                targets, scores = targets[:args.max_samples], scores[:args.max_samples]
-
-                if not args.id_as_neg: 
-                    scores = [-score for score in scores]
-                    base_scores_log = [-base_score for base_score in base_scores_log]
-                    mixdiff_scores_log = [-mixdiff_score for mixdiff_score in mixdiff_scores_log]
-
-                table = wandb.Table(
-                    columns=['id', 'ood_score','base_score', 'mixdiff_score', 'is_ood'],
-                    data=[
-                        (i, score, base_score, mixdiff_score, target)
-                        for i, (score, base_score, mixdiff_score, target) 
-                        in enumerate(zip(scores, base_scores_log, mixdiff_scores_log, targets))
-                    ]
-                )
-                wandb.log({f'ood_scores_{iter_idx}': table})
-
-                ood_scores = [score for score, target in zip(scores, targets) if target == 1]
-                id_scores = [score for score, target in zip(scores, targets) if target == 0]
-                ood_mean = np.mean(ood_scores)
-                id_mean = np.mean(id_scores)
-                print(f'ood_mean: {ood_mean}')
-                print(f'id_mean: {id_mean}')
-                print(f'ood - id mean: {ood_mean - id_mean}')
-
-                if not args.id_as_neg: 
-                    results = calculate_ood_metrics(np.array(id_scores), np.array(ood_scores))
-                    auroc = results['AUROC']
-                    fpr_at = results['FPR']
-                    fnr_at = 100.0
-
-                else:
-                    auroc = roc_auc_score(targets, scores)
-                    fpr_at = calculate_fpr_at(scores, targets, args.fpr_at)
-                    fnr_at = calculate_fnr_at(scores, targets, args.fnr_at)
-
-                print(f'auroc: {auroc}')
-
-                return auroc, fpr_at, fnr_at
-
             if datamodule.flatten:
                 scores_all += scores
                 base_scores_log_all += base_scores_log_all
@@ -421,6 +415,7 @@ if __name__ == '__main__':
                     base_scores_log,
                     mixdiff_scores_log,
                     targets,
+                    iter_idx,
                 )
 
                 aurocs.append(auroc)
@@ -442,6 +437,7 @@ if __name__ == '__main__':
             base_scores_log_all,
             mixdiff_scores_log_all,
             targets_all,
+            iter_idx=0,
         )
         aurocs.append(auroc)
         fprs.append(fpr_at)

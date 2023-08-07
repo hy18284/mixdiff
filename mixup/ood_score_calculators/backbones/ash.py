@@ -118,5 +118,5 @@ def apply_ash(x, method):
     if method.startswith('ash'):
         [fn, p] = method.split('@')
         return eval(fn)(x, int(p))
-
+    
     return x

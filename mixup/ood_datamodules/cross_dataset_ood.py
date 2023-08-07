@@ -16,6 +16,7 @@ from torch.utils.data import (
 from torchvision import transforms
 from torchvision.datasets import ImageNet
 from PIL import Image
+from sklearn.model_selection import train_test_split
 
 from .base_ood_datamodule import BaseOODDataModule
 
@@ -29,7 +30,7 @@ class CrossDatasetOODDataset(BaseOODDataModule):
     ):
         self.name = name
 
-        self.id_dataset = ImageNet(
+        self.id_dataset = ImageFolder(
             id_dataset_dir,
             transform=transforms.Compose([
                 transforms.Resize(256),
@@ -37,7 +38,6 @@ class CrossDatasetOODDataset(BaseOODDataModule):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ]),
-            split='val',
         )
         self.seen_idx = list(set(self.id_dataset.class_to_idx.values()))
         self.seen_idx.sort()
@@ -46,6 +46,7 @@ class CrossDatasetOODDataset(BaseOODDataModule):
         print(self.seen_idx.tolist())
         print(self.id_dataset.class_to_idx)
         print(len(self.seen_idx))
+        print(len(self.id_dataset))
         
 
         self.ood_dataset = ImageFolder(
@@ -105,7 +106,6 @@ class CrossDatasetOODDataset(BaseOODDataModule):
             )
             yield None, self.seen_idx, given_images, ref_images, None, loader
 
-
     def _sample_given_images(
         self, 
         dataset: Dataset,
@@ -135,22 +135,18 @@ class CrossDatasetOODDataset(BaseOODDataModule):
             given_images = torch.stack(given_images)
             given_images_list.append(given_images)
 
-            print('d_138')
             if n_ref_samples > 0:
                 ref_images.extend(images[-n_ref_samples:])
         
-        print('d_142')
         # (NC, M, C, W, H)
         given_images = torch.stack(given_images_list)
 
-        print('d_146')
         if n_ref_samples > 0:
             # (NC * P, C, W, H)
             ref_images = torch.stack(ref_images)
         else:
             ref_images = None
 
-        print('d_153')
         return given_images, ref_images
     
     @property
