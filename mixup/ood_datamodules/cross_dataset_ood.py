@@ -36,7 +36,7 @@ class CrossDatasetOODDataset(BaseOODDataModule):
                 transforms.Resize(256),
                 transforms.CenterCrop(224),
                 transforms.ToTensor(),
-                # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ]),
         )
         self.seen_idx = list(set(self.id_dataset.class_to_idx.values()))
@@ -55,13 +55,11 @@ class CrossDatasetOODDataset(BaseOODDataModule):
                 transforms.Resize(256),
                 transforms.CenterCrop(224),
                 transforms.ToTensor(),
-                # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ]),
             target_transform=lambda x: x + len(self.seen_idx)
         )
         
-        self._post_transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
     def get_splits(
         self, 
         n_samples_per_class: int, 
@@ -151,13 +149,13 @@ class CrossDatasetOODDataset(BaseOODDataModule):
 
         return given_images, ref_images
     
-    def post_transform(self, images):
-        orig_size = images.size()
-        C, H, W = orig_size[-3:]
-        images = images.view(-1, C, H, W)
-        images = self._post_transform(images)
-        images = images.view(orig_size)
-        return images
+    # def post_transform(self, images):
+    #     orig_size = images.size()
+    #     C, H, W = orig_size[-3:]
+    #     images = images.view(-1, C, H, W)
+    #     images = self._post_transform(images)
+    #     images = images.view(orig_size)
+    #     return images
     
     @property
     def flatten(self):
