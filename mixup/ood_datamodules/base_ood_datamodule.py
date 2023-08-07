@@ -1,3 +1,4 @@
+from typing import Any
 from abc import ABC, abstractmethod
 
 
@@ -31,3 +32,6 @@ class BaseOODDataModule(ABC):
     @property
     def flatten(self) -> str:
         return False
+
+    def post_transform(self, images) -> Any:
+        return images
