@@ -41,7 +41,20 @@ class TinyImageNetOODDataset(BaseOODDataModule):
         self.class_names, self.loaders_train = tinyimage_single_isolated_class_loader(train=True)
         print(self.class_names)
 
-    def get_splits(self, n_samples_per_class: int, seed: int, n_ref_samples: int):
+    def get_splits(
+        self, 
+        n_samples_per_class: int, 
+        seed: int, 
+        n_ref_samples: int,
+        batch_size: int,
+        shuffle: bool = True,
+    ):
+        loader = DataLoader(
+            self.tiny_imagenet, 
+            batch_size=batch_size, 
+            num_workers=2, 
+            shuffle=shuffle,
+        )
         for i in range(len(self.class_names)):
             seen_class_names = self.get_seen_class_names(i)
             id_imgs_per_class = self.sample_given_images(
@@ -65,7 +78,7 @@ class TinyImageNetOODDataset(BaseOODDataModule):
             else:
                 raise ValueError()
 
-            yield seen_class_names, seen_class_idx, given_images, ref_images, None
+            yield seen_class_names, seen_class_idx, given_images, ref_images, None, loader
 
     def sample_given_images(
         self, 

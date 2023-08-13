@@ -26,8 +26,26 @@ class CIFARPlus50OODDataset(BaseOODDataModule):
         }
         self.cur_loader_idx = 0
 
-    def get_splits(self, n_samples_per_class: int, seed: int, n_ref_samples: int):
-        for _ in range(len(self.out_datasets)):
+    def get_splits(
+        self, 
+        n_samples_per_class: int, 
+        seed: int, 
+        n_ref_samples: int,
+        batch_size: int,
+        shuffle: bool = True,
+    ):
+        for i, _ in enumerate(range(len(self.out_datasets))):
+            cifar_plus_100 = CIFARPlus(
+                self.in_dataset,
+                self.out_datasets[i],
+            )
+            loader = DataLoader(
+                cifar_plus_100, 
+                batch_size=batch_size, 
+                num_workers=2, 
+                shuffle=shuffle
+            )
+
             id_imgs_per_class = self.sample_given_images(
                 self.seen_class_idx.tolist(), 
                 n_samples_per_class + n_ref_samples,
@@ -48,7 +66,7 @@ class CIFARPlus50OODDataset(BaseOODDataModule):
             else:
                 raise ValueError()
 
-            yield self.seen_class_names, self.seen_class_idx, given_images, ref_images, None
+            yield self.seen_class_names, self.seen_class_idx, given_images, ref_images, None, loader
 
     def sample_given_images(
         self, 

@@ -112,7 +112,21 @@ class Caltech101OODDataset(BaseOODDataModule):
             for name, items in self.train_dict.items() 
         }
         
-    def get_splits(self, n_samples_per_class: int, seed: int, n_ref_samples: int):
+    def get_splits(
+        self, 
+        n_samples_per_class: int, 
+        seed: int, 
+        n_ref_samples: int,
+        batch_size: int,
+        shuffle: bool = True,
+    ):
+        loader = DataLoader(
+            self.val, 
+            batch_size=batch_size, 
+            num_workers=2, 
+            shuffle=shuffle,
+        )
+
         for i in range(len(self.seen_classes)):
             seen_class_names = self.seen_classes[i]
             seen_class_idx = [self.class2idx[name] for name in seen_class_names]
@@ -141,7 +155,7 @@ class Caltech101OODDataset(BaseOODDataModule):
             else:
                 raise ValueError()
 
-            yield seen_class_names, seen_class_idx, given_images, ref_images, None
+            yield seen_class_names, seen_class_idx, given_images, ref_images, None, loader
 
     def sample_given_images(
         self, 

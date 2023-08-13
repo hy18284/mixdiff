@@ -45,7 +45,21 @@ class CIFAR100OODDataset(BaseOODDataModule):
         ]
         self.max_split = max_split
 
-    def get_splits(self, n_samples_per_class: int, seed: int, n_ref_samples: int):
+    def get_splits(
+        self, 
+        n_samples_per_class: int, 
+        seed: int, 
+        n_ref_samples: int,
+        batch_size: int,
+        shuffle: bool = True,
+    ):
+        loader = DataLoader(
+            self.cifar100, 
+            batch_size=batch_size, 
+            num_workers=2, 
+            shuffle=shuffle,
+        )
+
         for i in range(len(self.splits)):
 
             if self.max_split is not None and i >= self.max_split:
@@ -76,7 +90,7 @@ class CIFAR100OODDataset(BaseOODDataModule):
             else:
                 raise ValueError()
 
-            yield seen_class_names, seen_class_idx, given_images, ref_images, None
+            yield seen_class_names, seen_class_idx, given_images, ref_images, None, loader
 
     def sample_given_images(
         self, 
