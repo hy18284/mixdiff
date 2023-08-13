@@ -5,6 +5,8 @@ from .mixdiff_msp import MixDiffMaxSofmaxProb
 from .mixdiff_zoc import MixDiffZOC
 from .linear_comb import LinearCombination
 from .linear_comb_text import LinearCombinationText
+from .mixonly_entropy import MixOnlyEntropy
+from .mixonly_msp import MixOnlyMaxSoftmaxProb
 
 from .mixdiff_energy_text import MixDiffEnergyText
 from .mixdiff_entropy_text import MixDiffEntropyText
