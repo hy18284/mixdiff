@@ -6,6 +6,7 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 import wandb
+import random
 
 from .ood_score_calculator import OODScoreCalculator
 from ..mixup_operators.base_mixup_operator import BaseMixupOperator
@@ -39,7 +40,7 @@ class MixDiffLogitBasedMixin:
         self.known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
 
         assert self.intermediate_state in ('logit', 'softmax')
-        assert self.selection_mode in ('argmax', 'dot', 'euclidean', 'kl')
+        assert self.selection_mode in ('argmax', 'dot', 'euclidean', 'kl', 'random')
         assert self.oracle_sim_mode in ('uniform', 'l2', 'dot', 'cosine_sim')
     
     def load_model(self, backbone_name, device):
@@ -157,6 +158,15 @@ class MixDiffLogitBasedMixin:
             max_indices = torch.argmax(logits, dim=-1)
             # (NC, M, C, H, W) -> (N, M, C, H, W)
             chosen_images = given_images[max_indices, ...]
+        elif self.selection_mode == 'random':
+            # (NC, M, C, H, W) -> (NC * M, C, H, W)
+            flate_given = given_images.flatten(0, 1)
+            chosen_images = []
+            for _ in range(len(logits)):
+                chosen = random.choices(flate_given, k=given_images.size(1))
+                chosen_images.append(torch.stack(chosen, dim=0))
+            # [N, (M, C, H, W)] -> (N, M, C, H, W)
+            chosen_images = torch.stack(chosen_images, dim=0)
         elif self.selection_mode in ('euclidean', 'dot', 'kl'):
             # (N, NC), (NC * M, NC) -> (N, NC * M)
             if self.selection_mode == 'euclidean':
@@ -299,6 +309,8 @@ class MixDiffLogitBasedMixin:
             sel_mode = 'dot'
         elif self.selection_mode == 'kl':
             sel_mode = 'kl'
+        elif self.selection_mode == 'random':
+            sel_mode = 'rnd'
         
         if self.intermediate_state == 'logit':
             inter_state = ''
