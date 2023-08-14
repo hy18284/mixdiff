@@ -39,7 +39,7 @@ class MixDiffLogitBasedMixin:
         self.known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
 
         assert self.intermediate_state in ('logit', 'softmax')
-        assert self.selection_mode in ('argmax', 'dot', 'euclidean')
+        assert self.selection_mode in ('argmax', 'dot', 'euclidean', 'kl')
         assert self.oracle_sim_mode in ('uniform', 'l2', 'dot', 'cosine_sim')
     
     def load_model(self, backbone_name, device):
@@ -72,7 +72,7 @@ class MixDiffLogitBasedMixin:
             model_path,
         )
 
-        if self.selection_mode in ('euclidean', 'dot') or self.oracle_sim_mode != 'uniform':
+        if self.selection_mode in ('euclidean', 'dot', 'kl') or self.oracle_sim_mode != 'uniform':
             NC, M, C, H, W = given_images.size()
             given_images_flat = given_images.view(-1, C, H, W)
             # (NC * M, NC)
@@ -157,12 +157,27 @@ class MixDiffLogitBasedMixin:
             max_indices = torch.argmax(logits, dim=-1)
             # (NC, M, C, H, W) -> (N, M, C, H, W)
             chosen_images = given_images[max_indices, ...]
-        elif self.selection_mode == 'euclidean' or self.selection_mode == 'dot':
+        elif self.selection_mode in ('euclidean', 'dot', 'kl'):
             # (N, NC), (NC * M, NC) -> (N, NC * M)
             if self.selection_mode == 'euclidean':
                 dists = torch.cdist(logits, self.id_logits, p=2)
             elif self.selection_mode == 'dot':
                 dists = -(logits @ self.id_logits.t())
+            elif self.selection_mode == 'kl':
+                if self.intermediate_state != 'softmax':
+                    kl_logits = torch.softmax(logits, dim=-1)
+                    id_logits = torch.softmax(self.id_logits, dim=-1)
+                else:
+                    kl_logits = logits
+                    id_logits = self.id_logits
+                
+                # P and Q are reversed in torch's KL div. KL(P || Q).
+                # (1, NC * M, NC), (N, 1, NC) -> (N, NC * M, NC) -> (N, NC * M)
+                dists = F.kl_div(
+                   torch.log(id_logits[None, ...]),
+                    kl_logits[:, None, :],
+                    reduction='none',
+                ).mean(dim=-1)
             # (N, NC * M) -> (N, M)
             _, topk_indices = torch.topk(
                 dists, 
@@ -282,6 +297,8 @@ class MixDiffLogitBasedMixin:
             sel_mode = 'agmax'
         elif self.selection_mode == 'dot':
             sel_mode = 'dot'
+        elif self.selection_mode == 'kl':
+            sel_mode = 'kl'
         
         if self.intermediate_state == 'logit':
             inter_state = ''
