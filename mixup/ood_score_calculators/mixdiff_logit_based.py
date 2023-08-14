@@ -39,7 +39,7 @@ class MixDiffLogitBasedMixin:
         self.log_interval = log_interval
         self.known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
 
-        assert self.intermediate_state in ('logit', 'softmax')
+        assert self.intermediate_state in ('logit', 'softmax', 'one_hot')
         assert self.selection_mode in ('argmax', 'dot', 'euclidean', 'kl', 'random')
         assert self.oracle_sim_mode in ('uniform', 'l2', 'dot', 'cosine_sim')
     
@@ -298,6 +298,11 @@ class MixDiffLogitBasedMixin:
         logits = torch.cat(logits_list, dim=0).float()
         if self.intermediate_state == 'softmax':
             logits = torch.softmax(logits, dim=-1)
+        elif self.intermediate_state == 'one_hot':
+            n_classes = logits.size(-1)
+            logits = torch.argmax(logits, dim=-1)
+            logits = F.one_hot(logits, num_classes=n_classes)
+            logits = logits.to(float)
         return logits
 
     def __str__(self) -> str:
@@ -316,6 +321,8 @@ class MixDiffLogitBasedMixin:
             inter_state = ''
         elif self.intermediate_state == 'softmax':
             inter_state = '_s'
+        elif self.intermediate_state == 'one_hot':
+            inter_state = '_o'
 
         if not self.utilize_mixup:
             return f'{self.name}'
