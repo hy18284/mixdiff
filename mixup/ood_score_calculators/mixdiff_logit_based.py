@@ -75,6 +75,7 @@ class MixDiffLogitBasedMixin:
         if self.selection_mode in ('euclidean', 'dot') or self.oracle_sim_mode != 'uniform':
             NC, M, C, H, W = given_images.size()
             given_images_flat = given_images.view(-1, C, H, W)
+            # (NC * M, NC)
             self.id_logits = self._process_images(given_images_flat)
 
         self.oracle_logits = [] 
@@ -156,27 +157,28 @@ class MixDiffLogitBasedMixin:
             max_indices = torch.argmax(logits, dim=-1)
             # (NC, M, C, H, W) -> (N, M, C, H, W)
             chosen_images = given_images[max_indices, ...]
-        # elif self.selection_mode == 'euclidean' or self.selection_mode == 'dot':
-        #     # (N, NC), (NC * M, NC) -> (N, NC * M)
-        #     if self.selection_mode == 'euclidean':
-        #         dists = torch.cdist(logits, self.id_logits, p=2)
-        #     if self.selection_mode == 'dot':
-        #         dists = -(logits @ self.id_logits.t())
-        #     # (N, NC * M) -> (N, M)
-        #     _, topk_indices = torch.topk(
-        #         dists, 
-        #         dim=1, 
-        #         k=len(given_images[0]),
-        #         largest=False,
-        #         sorted=True,
-        #     )
-        #     # (N, M), (NC, M) -> (N, M)
+        elif self.selection_mode == 'euclidean' or self.selection_mode == 'dot':
+            # (N, NC), (NC * M, NC) -> (N, NC * M)
+            if self.selection_mode == 'euclidean':
+                dists = torch.cdist(logits, self.id_logits, p=2)
+            elif self.selection_mode == 'dot':
+                dists = -(logits @ self.id_logits.t())
+            # (N, NC * M) -> (N, M)
+            _, topk_indices = torch.topk(
+                dists, 
+                dim=1, 
+                k=len(given_images[0]),
+                largest=False,
+                sorted=True,
+            )
+            # (N, M), (NC, M) -> (N, M)
 
-        #     # (NC, M, C, H, W) -> (NC * M, C, H, W)
-        #     given_images = torch.flatten(given_images, 0, 1)
-        #     given_images = torch.gather(given_images, 1, topk_indices)
-        # else:
-        #     ValueError('Invalid selection option.')
+            # (NC, M, C, H, W) -> (NC * M, C, H, W)
+            chosen_images = torch.flatten(given_images, 0, 1)
+            # (NC * M, C, H, W), (N, M) -> (N, M, C, H, W)
+            chosen_images = chosen_images[topk_indices]
+        else:
+            ValueError('Invalid selection option.')
 
         if self.oracle_sim_mode != 'uniform':
             # (NC, M, NC) -> (N, M, NC)
@@ -274,6 +276,13 @@ class MixDiffLogitBasedMixin:
         return logits
 
     def __str__(self) -> str:
+        if self.selection_mode == 'euclidean':
+            sel_mode = 'eucl'
+        elif self.selection_mode == 'argmax':
+            sel_mode = 'agmax'
+        elif self.selection_mode == 'dot':
+            sel_mode = 'dot'
+        
         if self.intermediate_state == 'logit':
             inter_state = ''
         elif self.intermediate_state == 'softmax':
@@ -282,6 +291,6 @@ class MixDiffLogitBasedMixin:
         if not self.utilize_mixup:
             return f'{self.name}'
         if self.add_base_score:
-            return f'mixdiff_{self.name}{inter_state}+'
+            return f'mixdiff_{self.name}_{sel_mode}{inter_state}+'
         else:
-            return f'mixdiff_{self.name}{inter_state}'
+            return f'mixdiff_{self.name}_{sel_mode}{inter_state}'
