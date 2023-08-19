@@ -116,8 +116,8 @@ class CrossDatasetOODDataset(BaseOODDataModule):
         label_2_images = defaultdict(list)
         filled_labels = set()
         for image, label in dataset:
-            print(len(label_2_images))
-            print(filled_labels)
+            # print(len(label_2_images))
+            # print(filled_labels)
             label_2_images[label].append(image)
             if len(label_2_images[label]) >= n_samples_per_class + n_ref_samples:
                 filled_labels.add(label)

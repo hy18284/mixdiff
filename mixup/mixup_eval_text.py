@@ -180,7 +180,7 @@ if __name__ == '__main__':
         for inner_iter, (
             seen_labels, 
             seen_idx, 
-            given_images, 
+            given_images,
             ref_images, 
             model_path,
             loader,
@@ -188,7 +188,7 @@ if __name__ == '__main__':
             datamodule.get_splits(
                 n_samples_per_class=M, 
                 seed=seed, 
-                n_ref_samples=P if args.ref_mode != 'oracle' else 0,
+                n_ref_samples=P if args.ref_mode == 'rand_id' else 0,
                 batch_size=batch_size,
                 shuffle=True,
             )
