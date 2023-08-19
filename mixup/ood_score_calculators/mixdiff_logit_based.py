@@ -6,6 +6,7 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 import wandb
+import random
 
 from .ood_score_calculator import OODScoreCalculator
 from ..mixup_operators.base_mixup_operator import BaseMixupOperator
@@ -38,8 +39,8 @@ class MixDiffLogitBasedMixin:
         self.log_interval = log_interval
         self.known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
 
-        assert self.intermediate_state in ('logit', 'softmax')
-        assert self.selection_mode in ('argmax', 'dot', 'euclidean')
+        assert self.intermediate_state in ('logit', 'softmax', 'one_hot')
+        assert self.selection_mode in ('argmax', 'dot', 'euclidean', 'kl', 'random')
         assert self.oracle_sim_mode in ('uniform', 'l2', 'dot', 'cosine_sim')
     
     def load_model(self, backbone_name, device):
@@ -72,9 +73,10 @@ class MixDiffLogitBasedMixin:
             model_path,
         )
 
-        if self.selection_mode in ('euclidean', 'dot') or self.oracle_sim_mode != 'uniform':
+        if self.selection_mode in ('euclidean', 'dot', 'kl') or self.oracle_sim_mode != 'uniform':
             NC, M, C, H, W = given_images.size()
             given_images_flat = given_images.view(-1, C, H, W)
+            # (NC * M, NC)
             self.id_logits = self._process_images(given_images_flat)
 
         self.oracle_logits = [] 
@@ -156,27 +158,52 @@ class MixDiffLogitBasedMixin:
             max_indices = torch.argmax(logits, dim=-1)
             # (NC, M, C, H, W) -> (N, M, C, H, W)
             chosen_images = given_images[max_indices, ...]
-        # elif self.selection_mode == 'euclidean' or self.selection_mode == 'dot':
-        #     # (N, NC), (NC * M, NC) -> (N, NC * M)
-        #     if self.selection_mode == 'euclidean':
-        #         dists = torch.cdist(logits, self.id_logits, p=2)
-        #     if self.selection_mode == 'dot':
-        #         dists = -(logits @ self.id_logits.t())
-        #     # (N, NC * M) -> (N, M)
-        #     _, topk_indices = torch.topk(
-        #         dists, 
-        #         dim=1, 
-        #         k=len(given_images[0]),
-        #         largest=False,
-        #         sorted=True,
-        #     )
-        #     # (N, M), (NC, M) -> (N, M)
+        elif self.selection_mode == 'random':
+            # (NC, M, C, H, W) -> (NC * M, C, H, W)
+            flate_given = given_images.flatten(0, 1)
+            chosen_images = []
+            for _ in range(len(logits)):
+                chosen = random.choices(flate_given, k=given_images.size(1))
+                chosen_images.append(torch.stack(chosen, dim=0))
+            # [N, (M, C, H, W)] -> (N, M, C, H, W)
+            chosen_images = torch.stack(chosen_images, dim=0)
+        elif self.selection_mode in ('euclidean', 'dot', 'kl'):
+            # (N, NC), (NC * M, NC) -> (N, NC * M)
+            if self.selection_mode == 'euclidean':
+                dists = torch.cdist(logits, self.id_logits, p=2)
+            elif self.selection_mode == 'dot':
+                dists = -(logits @ self.id_logits.t())
+            elif self.selection_mode == 'kl':
+                if self.intermediate_state != 'softmax':
+                    kl_logits = torch.softmax(logits, dim=-1)
+                    id_logits = torch.softmax(self.id_logits, dim=-1)
+                else:
+                    kl_logits = logits
+                    id_logits = self.id_logits
+                
+                # P and Q are reversed in torch's KL div. KL(P || Q).
+                # (1, NC * M, NC), (N, 1, NC) -> (N, NC * M, NC) -> (N, NC * M)
+                dists = F.kl_div(
+                   torch.log(id_logits[None, ...]),
+                    kl_logits[:, None, :],
+                    reduction='none',
+                ).mean(dim=-1)
+            # (N, NC * M) -> (N, M)
+            _, topk_indices = torch.topk(
+                dists, 
+                dim=1, 
+                k=len(given_images[0]),
+                largest=False,
+                sorted=True,
+            )
+            # (N, M), (NC, M) -> (N, M)
 
-        #     # (NC, M, C, H, W) -> (NC * M, C, H, W)
-        #     given_images = torch.flatten(given_images, 0, 1)
-        #     given_images = torch.gather(given_images, 1, topk_indices)
-        # else:
-        #     ValueError('Invalid selection option.')
+            # (NC, M, C, H, W) -> (NC * M, C, H, W)
+            chosen_images = torch.flatten(given_images, 0, 1)
+            # (NC * M, C, H, W), (N, M) -> (N, M, C, H, W)
+            chosen_images = chosen_images[topk_indices]
+        else:
+            ValueError('Invalid selection option.')
 
         if self.oracle_sim_mode != 'uniform':
             # (NC, M, NC) -> (N, M, NC)
@@ -271,17 +298,35 @@ class MixDiffLogitBasedMixin:
         logits = torch.cat(logits_list, dim=0).float()
         if self.intermediate_state == 'softmax':
             logits = torch.softmax(logits, dim=-1)
+        elif self.intermediate_state == 'one_hot':
+            n_classes = logits.size(-1)
+            logits = torch.argmax(logits, dim=-1)
+            logits = F.one_hot(logits, num_classes=n_classes)
+            logits = logits.to(float)
         return logits
 
     def __str__(self) -> str:
+        if self.selection_mode == 'euclidean':
+            sel_mode = 'eucl'
+        elif self.selection_mode == 'argmax':
+            sel_mode = 'agmax'
+        elif self.selection_mode == 'dot':
+            sel_mode = 'dot'
+        elif self.selection_mode == 'kl':
+            sel_mode = 'kl'
+        elif self.selection_mode == 'random':
+            sel_mode = 'rnd'
+        
         if self.intermediate_state == 'logit':
             inter_state = ''
         elif self.intermediate_state == 'softmax':
             inter_state = '_s'
+        elif self.intermediate_state == 'one_hot':
+            inter_state = '_o'
 
         if not self.utilize_mixup:
             return f'{self.name}'
         if self.add_base_score:
-            return f'mixdiff_{self.name}{inter_state}+'
+            return f'mixdiff_{self.name}_{sel_mode}{inter_state}+'
         else:
-            return f'mixdiff_{self.name}{inter_state}'
+            return f'mixdiff_{self.name}_{sel_mode}{inter_state}'
