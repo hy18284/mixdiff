@@ -25,8 +25,8 @@ do
                                 --gamma $gamma \
                                 --r_ref 0 \
                                 --seed 0 \
-                                --wandb_name debug \
-                                --wandb_project ZOC_debug \
+                                --wandb_name '' \
+                                --wandb_project ZOC \
                                 --device 0 \
                                 --ref_mode oracle \
                                 --model_path checkpoints/clinic150_bert \
@@ -36,7 +36,7 @@ do
                                 --fnr_at 0.95 \
                                 --fpr_at 0.95 \
                                 --datamodule.class_path mixup.ood_datamodules.$dataset \
-                                --datamodule.init_args.config_path mixup/configs_text/clinic150_cs_val_$id_rate.yml \
+                                --datamodule.init_args.config_path mixup/configs_text/top_cs_val_$id_rate.yml \
                                 --mixup_operator.class_path mixup.mixup_operators.$mixup_fn \
                                 --mixup_operator.init_args.ref_pos $1
                         done

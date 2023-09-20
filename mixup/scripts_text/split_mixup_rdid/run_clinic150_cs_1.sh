@@ -9,17 +9,17 @@ do
         for mixup_fn in \
             SplitMixup
         do
-            for gamma in 2.0
+            for n in 258
             do
-                for n in 258
+                for id_rate in 25 50 75
                 do
-                    for m in 20
+                    for gamma in 1.0
                     do
-                        for r in 7
+                        for m in 15 10 5
                         do
-                            for p in 20
+                            for r in 9 7 5
                             do
-                                for id_rate in 25 50 75
+                                for p in 15 10 5
                                 do
                                     python -m mixup.mixup_eval_text \
                                         --n $n \
@@ -29,16 +29,14 @@ do
                                         --gamma $gamma \
                                         --r_ref 0 \
                                         --seed 0 \
-                                        --wandb_name debug \
-                                        --wandb_project ZOC_debug \
+                                        --wandb_name '' \
+                                        --wandb_project ZOC \
                                         --device 0 \
                                         --ref_mode rand_id \
                                         --model_path checkpoints/clinic150_bert \
                                         --score_calculator.class_path mixup.ood_score_calculators.$method \
                                         --score_calculator.init_args.batch_size 20000 \
                                         --score_calculator.init_args.selection_mode argmax \
-                                        --score_calculator.init_args.utilize_mixup false \
-                                        --score_calculator.init_args.add_base_score true \
                                         --fnr_at 0.95 \
                                         --fpr_at 0.95 \
                                         --datamodule.class_path mixup.ood_datamodules.$dataset \

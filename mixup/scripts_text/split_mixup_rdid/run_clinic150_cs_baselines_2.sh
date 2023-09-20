@@ -9,17 +9,17 @@ do
         for mixup_fn in \
             SplitMixup
         do
-            for gamma in 2.0
+            for n in 258
             do
-                for n in 258
+                for id_rate in 25 50 75
                 do
-                    for m in 20
+                    for gamma in 0.0
                     do
-                        for r in 7
+                        for m in 1
                         do
-                            for p in 20
+                            for r in 1
                             do
-                                for id_rate in 25 50 75
+                                for p in 1
                                 do
                                     python -m mixup.mixup_eval_text \
                                         --n $n \
@@ -29,8 +29,8 @@ do
                                         --gamma $gamma \
                                         --r_ref 0 \
                                         --seed 0 \
-                                        --wandb_name debug \
-                                        --wandb_project ZOC_debug \
+                                        --wandb_name '' \
+                                        --wandb_project ZOC \
                                         --device 0 \
                                         --ref_mode rand_id \
                                         --model_path checkpoints/clinic150_bert \

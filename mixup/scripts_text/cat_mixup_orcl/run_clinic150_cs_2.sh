@@ -13,9 +13,9 @@ do
             do
                 for id_rate in 75 50 25
                 do
-                    for gamma in 1.0 0.5 2.0
+                    for gamma in 2.0
                     do
-                        for m in 30 25 20 10 5 1
+                        for m in 30 25 20 15 10 5 1
                         do
                             set -- $ref_pos
                             python -m mixup.mixup_eval_text \
@@ -25,8 +25,8 @@ do
                                 --gamma $gamma \
                                 --r_ref 0 \
                                 --seed 0 \
-                                --wandb_name debug \
-                                --wandb_project ZOC_debug \
+                                --wandb_name '' \
+                                --wandb_project ZOC \
                                 --device 0 \
                                 --ref_mode oracle \
                                 --model_path checkpoints/clinic150_bert \
