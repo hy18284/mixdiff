@@ -75,3 +75,9 @@ class OODScoreCalculator(ABC):
     @ref_mode.setter
     def ref_mode(self, ref_mode: str) -> str:
         self._ref_mode = ref_mode
+    
+    def transform(self, images):
+        return images
+
+    def post_transform(self, images):
+        return images

@@ -330,3 +330,9 @@ class MixDiffLogitBasedMixin:
             return f'mixdiff_{self.name}_{sel_mode}{inter_state}+'
         else:
             return f'mixdiff_{self.name}_{sel_mode}{inter_state}'
+
+    def transform(self, images):
+        return self.backbone.transform(images)
+
+    def post_transform(self, images):
+        return self.backbone.post_transform(images)

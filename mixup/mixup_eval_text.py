@@ -191,6 +191,7 @@ if __name__ == '__main__':
                 n_ref_samples=P if args.ref_mode == 'rand_id' else 0,
                 batch_size=batch_size,
                 shuffle=True,
+                transform=score_calculator.transform,
             )
         ):
             seen_idx = seen_idx.to(device) 
@@ -248,7 +249,7 @@ if __name__ == '__main__':
                     ref_images = ref_images.to(device)
 
                 image_kwargs = score_calculator.process_images(
-                    datamodule.post_transform(images)
+                    score_calculator.post_transform(images)
                 )
 
                 if score_calculator.utilize_mixup:
@@ -304,9 +305,9 @@ if __name__ == '__main__':
                         known_mixup = None
                     
                     if known_mixup is not None:
-                        known_mixup = datamodule.post_transform(known_mixup)
+                        known_mixup = score_calculator.post_transform(known_mixup)
                     if unknown_mixup is not None:
-                        unknown_mixup = datamodule.post_transform(unknown_mixup)
+                        unknown_mixup = score_calculator.post_transform(unknown_mixup)
 
                     if args.log_interval is not None and i % args.log_interval == 0:
                         if args.ref_mode == 'oracle':

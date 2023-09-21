@@ -1,17 +1,20 @@
 from typing import (
     Optional,
 )
-from abc import (
-    ABC,
-    abstractmethod,
-)
 
+import torch
+
+from .base_backbone import BaseBackbone
 from ...mixup_operators.base_mixup_operator import BaseMixupOperator
+from .densenet import DenseNet3
 
 
-class BaseBackbone(ABC):
+class DenseNetCIFAR10Backbone(BaseBackbone):
     def load_model(self, backbone_name, device):
-        pass
+        self.model = DenseNet3(100, 10)
+        self.model.load_state_dict(torch.load(backbone_name))
+        self.model.to(device)
+        self.model.eval()
 
     def on_eval_start(
         self, 
@@ -29,12 +32,5 @@ class BaseBackbone(ABC):
     def on_eval_end(self, iter_idx: int):
         pass
 
-    @abstractmethod
     def process_images(self, images):
-        pass
-
-    def transform(self, images):
-        return images
-
-    def post_transform(self, images):
-        return images
+        return self.model(images)

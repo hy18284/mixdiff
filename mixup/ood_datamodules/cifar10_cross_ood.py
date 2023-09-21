@@ -9,7 +9,10 @@ import numpy as np
 from tqdm import tqdm
 
 import torch
-from torchvision.datasets import ImageFolder
+from torchvision.datasets import (
+    ImageFolder,
+    CIFAR10,
+)
 from torch.utils.data import (
     DataLoader,
     random_split,
@@ -25,18 +28,21 @@ from .base_ood_datamodule import BaseOODDataModule
 class SplitOODDataset(Dataset):
     def __init__(
         self, 
-        data_dir: str, 
+        dataset: str, 
         seed: int, 
         split_idx: int,
         transform: Optional[Callable] = None,
     ) -> None:
         super().__init__()
         self.transform = transform
-        dataset = ImageFolder(data_dir)
+        self.dataset = dataset
         
         class2paths = defaultdict(list)
-        for path, label in tqdm(dataset.imgs, desc='Collecting images for oracle split...'):
-            class2paths[label].append((path, label))
+        for idx, (img, label) in tqdm(
+            enumerate(self.dataset), 
+            desc='Collecting images for oracle split...'
+        ):
+            class2paths[label].append(idx)
         
         rng = np.random.default_rng(seed)
         for label in class2paths.keys():
@@ -54,9 +60,9 @@ class SplitOODDataset(Dataset):
         rng.shuffle(self.items)
 
     def __getitem__(self, idx):
-        image, label = self.items[idx]
+        image, label = self.dataset[self.items[idx]]
         return (
-            self.transform(Image.open(image).convert('RGB')),
+            self.transform(image),
             label,
         )
     
@@ -64,40 +70,23 @@ class SplitOODDataset(Dataset):
         return len(self.items)
 
 
-class CrossDatasetOODDataset(BaseOODDataModule):
+class CIFAR10CrossOODDataset(BaseOODDataModule):
     def __init__(
         self, 
-        id_dataset_dir: str,
         ood_dataset_dir: str,
         name: Optional[str] = None,
         post_transform: bool = False,
     ):
-        self.id_dataset_dir = id_dataset_dir
-        self.name = name
-        
-        if post_transform: 
-            self.transform = transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-            ])
-            self._post_transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        else:
-            self.transform = transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            ])
-            self._post_transform = lambda x: x
-        self.seen_idx = torch.arange(1000)
-
-        self.ood_dataset = ImageFolder(
-            ood_dataset_dir,
-            transform=self.transform,
-            target_transform=lambda x: x + len(self.seen_idx)
+        self.dataset = CIFAR10(
+            root='./data', 
+            train=False, 
+            download=True,  
         )
-        
+        self.name = name
+        self.class_names = ('airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+        self.seen_idx = torch.arange(10)
+        self.ood_dataset_dir = ood_dataset_dir
+
     def get_splits(
         self, 
         n_samples_per_class: int, 
@@ -105,17 +94,24 @@ class CrossDatasetOODDataset(BaseOODDataModule):
         n_ref_samples: int,
         batch_size: int,
         shuffle: bool = True,
+        transform: Optional[Callable] = None,
     ):
         self.id_datasets = [
             SplitOODDataset(
-                data_dir=self.id_dataset_dir,
+                self.dataset,
                 seed=seed,
                 split_idx=split_idx,
-                transform=self.transform,
+                transform=transform,
             )
             for split_idx in range(2)
         ]
 
+        self.ood_dataset = ImageFolder(
+            self.ood_dataset_dir,
+            transform=transform,
+            target_transform=lambda x: x + len(self.seen_idx)
+        )
+        
         self.ood_datasets = random_split(
             self.ood_dataset, 
             [0.5, 0.5], 
@@ -145,7 +141,7 @@ class CrossDatasetOODDataset(BaseOODDataModule):
                 num_workers=2, 
                 shuffle=shuffle
             )
-            yield None, self.seen_idx, given_images, ref_images, None, loader
+            yield self.class_names, self.seen_idx, given_images, ref_images, None, loader
 
     def _sample_given_images(
         self, 
