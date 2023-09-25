@@ -7,6 +7,8 @@ from collections import defaultdict
 import itertools
 import numpy as np
 from tqdm import tqdm
+from pathlib import Path
+import json
 
 import torch
 from torchvision.datasets import ImageFolder
@@ -16,7 +18,6 @@ from torch.utils.data import (
     Dataset,
     ConcatDataset,
 )
-from torchvision import transforms
 from PIL import Image
 
 from .base_ood_datamodule import BaseOODDataModule
@@ -32,10 +33,10 @@ class SplitOODDataset(Dataset):
     ) -> None:
         super().__init__()
         self.transform = transform
-        dataset = ImageFolder(data_dir)
+        self.dataset = ImageFolder(data_dir)
         
         class2paths = defaultdict(list)
-        for path, label in tqdm(dataset.imgs, desc='Collecting images for oracle split...'):
+        for path, label in tqdm(self.dataset.imgs, desc='Collecting images for oracle split...'):
             class2paths[label].append((path, label))
         
         rng = np.random.default_rng(seed)
@@ -62,41 +63,36 @@ class SplitOODDataset(Dataset):
     
     def __len__(self):
         return len(self.items)
+    
+    def label_to_class_id(self):
+        label_to_class_id = {}
+        for path, label in tqdm(self.dataset.imgs, desc='Collecting images for oracle split...'):
+            if label not in label_to_class_id:
+                label_to_class_id[label] = Path(path).parents[0].name
+            if len(label_to_class_id) >= 1000:
+                break
+        return label_to_class_id
 
 
-class CrossDatasetOODDataset(BaseOODDataModule):
+class ImageNetCrossOODDataset(BaseOODDataModule):
     def __init__(
         self, 
-        id_dataset_dir: str,
         ood_dataset_dir: str,
+        id_dataset_dir: str = 'data/imagenet/val',
         name: Optional[str] = None,
-        post_transform: bool = False,
+        class_name_path: str = 'data/imagenet/imagenet_class_index.json'
     ):
         self.id_dataset_dir = id_dataset_dir
+        self.ood_dataset_dir = ood_dataset_dir
+        self.class_name_path = class_name_path
         self.name = name
+
+        # # TODO: May not match with class label indices.
+        # with open(class_name_path, 'rb') as f:
+        #     self.class_names = list(np.load(f))
         
-        if post_transform: 
-            self.transform = transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-            ])
-            self._post_transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        else:
-            self.transform = transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            ])
-            self._post_transform = lambda x: x
         self.seen_idx = torch.arange(1000)
 
-        self.ood_dataset = ImageFolder(
-            ood_dataset_dir,
-            transform=self.transform,
-            target_transform=lambda x: x + len(self.seen_idx)
-        )
         
     def get_splits(
         self, 
@@ -105,16 +101,35 @@ class CrossDatasetOODDataset(BaseOODDataModule):
         n_ref_samples: int,
         batch_size: int,
         shuffle: bool = True,
+        transform: Optional[Callable] = None,
     ):
         self.id_datasets = [
             SplitOODDataset(
                 data_dir=self.id_dataset_dir,
                 seed=seed,
                 split_idx=split_idx,
-                transform=self.transform,
+                transform=transform,
             )
             for split_idx in range(2)
         ]
+        label_to_class_id = self.id_datasets[0].label_to_class_id()
+        with open(self.class_name_path) as f:
+            label_to_name = json.load(f)
+
+        class_id_to_name = {}
+        for class_id, class_name in label_to_name.values():
+            class_id_to_name[class_id] = class_name
+
+        self.class_names = []
+        for label in range(1000):
+            class_name = class_id_to_name[label_to_class_id[label]]
+            self.class_names.append(class_name.replace('_', ' '))
+
+        self.ood_dataset = ImageFolder(
+            self.ood_dataset_dir,
+            transform=transform,
+            target_transform=lambda x: x + len(self.seen_idx)
+        )
 
         self.ood_datasets = random_split(
             self.ood_dataset, 
@@ -123,6 +138,7 @@ class CrossDatasetOODDataset(BaseOODDataModule):
         )
 
         for i, (id_dataset, ood_dataset) in enumerate(zip(self.id_datasets, self.ood_datasets)):
+
             given_images, ref_images = self._sample_given_images(
                 dataset=self.id_datasets[(i + 1) % len(self.id_datasets)],
                 n_samples_per_class=n_samples_per_class,
@@ -145,7 +161,7 @@ class CrossDatasetOODDataset(BaseOODDataModule):
                 num_workers=2, 
                 shuffle=shuffle
             )
-            yield None, self.seen_idx, given_images, ref_images, None, loader
+            yield self.class_names, self.seen_idx, given_images, ref_images, None, loader
 
     def _sample_given_images(
         self, 
@@ -187,14 +203,6 @@ class CrossDatasetOODDataset(BaseOODDataModule):
             ref_images = None
 
         return given_images, ref_images
-    
-    def post_transform(self, images):
-        orig_size = images.size()
-        C, H, W = orig_size[-3:]
-        images = images.view(-1, C, H, W)
-        images = self._post_transform(images)
-        images = images.view(orig_size)
-        return images
     
     @property
     def flatten(self):
