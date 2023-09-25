@@ -125,6 +125,7 @@ dependencies:
   - ptyprocess=0.7.0=pyhd3eb1b0_2
   - pure_eval=0.2.2=pyhd3eb1b0_0
   - pycparser=2.21=pyhd3eb1b0_0
+  - pygments=2.15.1=py310h06a4308_1
   - pyopenssl=22.0.0=pyhd3eb1b0_0
   - pyparsing=3.0.9=py310h06a4308_0
   - pysocks=1.7.1=py310h06a4308_0
@@ -191,6 +192,7 @@ dependencies:
     - multidict==6.0.4
     - multiprocess==0.70.14
     - omegaconf==2.3.0
+    - openai==0.28.0
     - openpyxl==3.0.10
     - pandas==1.5.2
     - pathtools==0.1.2
@@ -199,7 +201,6 @@ dependencies:
     - psutil==5.9.3
     - pyarrow==12.0.0
     - pycocotools==2.0.5
-    - pygments==2.15.1
     - pytorch-lightning==2.0.2
     - pytz==2022.6
     - pyyaml==6.0
