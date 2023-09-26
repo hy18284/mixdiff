@@ -39,7 +39,7 @@ do
                                         --ref_mode rand_id \
                                         --model_path 'ViT-B/32' \
                                         --max_samples null \
-                                        --id_as_neg false \
+                                        --id_as_neg true \
                                         --score_calculator.class_path mixup.ood_score_calculators.$method \
                                         --score_calculator.init_args.backbone.class_path mixup.ood_score_calculators.backbones.ClipBackbone \
                                         --score_calculator.init_args.backbone.init_args.post_transform true \
