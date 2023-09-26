@@ -65,5 +65,3 @@ do
         done
     done
 done
-
-    # CIFAR10CrossOODDataset
