@@ -21,7 +21,7 @@ class ResNetBackbone(BaseBackbone):
             transforms.CenterCrop(224),
             transforms.ToTensor(),
         ])
-            self.post_transform_fn = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            self.post_transform_fn = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         else:
             self.transform_fn = transforms.Compose([
                 transforms.Resize(256),
