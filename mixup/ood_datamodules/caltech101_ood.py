@@ -1,8 +1,13 @@
+from typing import (
+    Optional,
+    Callable,
+)
 import random
 from pathlib import Path
 from collections import defaultdict
 import itertools
 import copy
+import math
 
 import torch
 from torchvision.datasets import Caltech101
@@ -74,13 +79,6 @@ class SimpleCaltech101(Dataset):
 
 class Caltech101OODDataset(BaseOODDataModule):
     def __init__(self, ):
-        self.transform = Compose([
-            Resize(224, interpolation=Image.BICUBIC),
-            CenterCrop(224),
-            ToTensor(),
-            Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-        ])
-
         dataset = Caltech101(
             root='./data',
             target_type='category',
@@ -89,12 +87,11 @@ class Caltech101OODDataset(BaseOODDataModule):
 
         self.class2idx = make_class2idx_map(dataset) 
         class2data = split_by_class(dataset)
-        self.train_dict, val_dict = split_train_val(
+        self.train_dict, self.val_dict = split_train_val(
             class2data, 
             ratio=VAL_RATIO, 
             seed=SEED,
         )
-        self.val = SimpleCaltech101(copy.deepcopy(val_dict), self.transform)
 
         self.seen_classes = []
         for seed in range(NUM_SPLITS):
@@ -104,14 +101,6 @@ class Caltech101OODDataset(BaseOODDataModule):
             )
             self.seen_classes.append(seen_classes)
 
-        self.train_per_class = {
-            name: SimpleCaltech101(
-                {name: items},
-                self.transform,
-            )
-            for name, items in self.train_dict.items() 
-        }
-        
     def get_splits(
         self, 
         n_samples_per_class: int, 
@@ -119,7 +108,16 @@ class Caltech101OODDataset(BaseOODDataModule):
         n_ref_samples: int,
         batch_size: int,
         shuffle: bool = True,
+        transform: Optional[Callable] = None,
     ):
+        self.val = SimpleCaltech101(copy.deepcopy(self.val_dict), transform)
+        self.train_per_class = {
+            name: SimpleCaltech101(
+                {name: items},
+                transform,
+            )
+            for name, items in self.train_dict.items() 
+        }
         loader = DataLoader(
             self.val, 
             batch_size=batch_size, 
@@ -134,7 +132,7 @@ class Caltech101OODDataset(BaseOODDataModule):
 
             id_imgs_per_class = self.sample_given_images(
                 seen_class_names=seen_class_names,
-                n_samples_per_class=n_samples_per_class + n_samples_per_class,
+                n_samples_per_class=n_samples_per_class + math.ceil(n_ref_samples / len(seen_class_names)),
                 seed=seed,
             )
 

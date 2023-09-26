@@ -1,17 +1,14 @@
 import torch
-from clip.simple_tokenizer import SimpleTokenizer as clip_tokenizer
-import clip
 
 from .ood_score_calculator import OODScoreCalculator
-from .mixdiff_logit_based import MixDiffLogitBasedMixin
-from .mixdiff_msp import MixDiffMaxSofmaxProb
+from .mixdiff_entropy import MixDiffEntropy
 
 
-class MixSimMaxSoftmaxProb(
-    MixDiffMaxSofmaxProb,
+class MixDotEntropy(
+    MixDiffEntropy,
     OODScoreCalculator,
 ):
-    name = 'msp'
+    name = 'entropy'
     @torch.no_grad()
     def calculate_diff(
         self,
@@ -26,4 +23,4 @@ class MixSimMaxSoftmaxProb(
 
     def __str__(self) -> str:
         # TODO: May not be the greatest way to handle this.
-        return super().__str__().replace('mixdiff', 'mixsim')
+        return super().__str__().replace('mixdiff', 'mixdot')
