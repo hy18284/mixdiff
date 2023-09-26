@@ -142,14 +142,13 @@ class ImageNetCrossOODDataset(BaseOODDataModule):
             given_images, ref_images = self._sample_given_images(
                 dataset=self.id_datasets[(i + 1) % len(self.id_datasets)],
                 n_samples_per_class=n_samples_per_class,
-                n_ref_samples=n_ref_samples,
+                n_ref_samples=int(np.ceil(n_ref_samples / len(self.seen_idx))),
                 seed=seed,
             )
 
             if self.ref_mode in ('oracle', 'in_batch'):
                 ref_images = None
             elif self.ref_mode == 'rand_id':
-                ref_images = torch.cat(ref_images, dim=0)
                 ref_images = random.Random(seed).choices(ref_images, k=n_ref_samples)
                 ref_images = torch.stack(ref_images)
             else:
