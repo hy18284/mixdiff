@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument('--m', type=int, default=10)
     parser.add_argument('--r', type=int, default=3)
     parser.add_argument('--p', type=int, default=10)
+    parser.add_argument('--k', type=int, default=0)
     parser.add_argument('--r_ref', type=float, default=0)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--inner_seeds', type=int, default=[], nargs='*')
@@ -184,6 +185,7 @@ if __name__ == '__main__':
             ref_images, 
             model_path,
             loader,
+            few_shot_samples,
         ) in enumerate(
             datamodule.get_splits(
                 n_samples_per_class=M, 
@@ -192,6 +194,7 @@ if __name__ == '__main__':
                 batch_size=batch_size,
                 shuffle=True,
                 transform=score_calculator.transform,
+                n_few_shot_samples=args.k,
             )
         ):
             seen_idx = seen_idx.to(device) 
@@ -225,6 +228,7 @@ if __name__ == '__main__':
                 seed=seed,
                 iter_idx=iter_idx,
                 model_path=model_path,
+                few_shot_samples=few_shot_samples,
             )
             cur_num_samples = 0
 
