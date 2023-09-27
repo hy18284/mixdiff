@@ -16,7 +16,7 @@ do
             do
                 for m in 15 10
                 do
-                    for p in 15 10
+                    for p in 14 9
                     do
                         for r in 7 5
                         do
