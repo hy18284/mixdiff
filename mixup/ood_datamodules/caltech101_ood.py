@@ -173,8 +173,6 @@ class Caltech101OODDataset(BaseOODDataModule):
         given_images = []
         for seen_class_name in seen_class_names:
             dataset = self.train_per_class[seen_class_name]
-            print(dataset)
-            print(len(dataset))
             pairs = np.random.default_rng(seed).choice(
                 dataset, 
                 size=n_samples_per_class,
