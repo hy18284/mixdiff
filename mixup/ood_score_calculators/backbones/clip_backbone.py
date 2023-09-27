@@ -57,6 +57,7 @@ class ClipBackbone(BaseBackbone):
         seed,
         iter_idx,
         model_path,
+        few_shot_samples,
     ):
         seen_descriptions = [f"This is a photo of a {label}" for label in seen_labels]
         prompts_ids = [clip.tokenize(prompt) for prompt in seen_descriptions]

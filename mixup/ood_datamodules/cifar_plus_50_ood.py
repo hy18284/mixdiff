@@ -1,3 +1,7 @@
+from typing import (
+    Optional,
+    Callable,
+)
 import random
 
 import torch
@@ -33,6 +37,8 @@ class CIFARPlus50OODDataset(BaseOODDataModule):
         n_ref_samples: int,
         batch_size: int,
         shuffle: bool = True,
+        transform: Optional[Callable] = None,
+        n_few_shot_samples: Optional[int] = None,
     ):
         for i, _ in enumerate(range(len(self.out_datasets))):
             cifar_plus_100 = CIFARPlus(
@@ -66,7 +72,7 @@ class CIFARPlus50OODDataset(BaseOODDataModule):
             else:
                 raise ValueError()
 
-            yield self.seen_class_names, self.seen_class_idx, given_images, ref_images, None, loader
+            yield self.seen_class_names, self.seen_class_idx, given_images, ref_images, None, loader, None
 
     def sample_given_images(
         self, 

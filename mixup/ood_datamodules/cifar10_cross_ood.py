@@ -95,6 +95,7 @@ class CIFAR10CrossOODDataset(BaseOODDataModule):
         batch_size: int,
         shuffle: bool = True,
         transform: Optional[Callable] = None,
+        n_few_shot_samples: Optional[int] = None,
     ):
         self.id_datasets = [
             SplitOODDataset(
@@ -141,7 +142,7 @@ class CIFAR10CrossOODDataset(BaseOODDataModule):
                 num_workers=2, 
                 shuffle=shuffle
             )
-            yield self.class_names, self.seen_idx, given_images, ref_images, None, loader
+            yield self.class_names, self.seen_idx, given_images, ref_images, None, loader, None
 
     def _sample_given_images(
         self, 

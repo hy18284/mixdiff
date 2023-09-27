@@ -23,6 +23,7 @@ class BaseBackbone(ABC):
         seed,
         iter_idx,
         model_path,
+        few_shot_samples,
     ):
         pass
 

@@ -80,12 +80,14 @@ class ImageNetCrossOODDataset(BaseOODDataModule):
         ood_dataset_dir: str,
         id_dataset_dir: str = 'data/imagenet/val',
         name: Optional[str] = None,
-        class_name_path: str = 'data/imagenet/imagenet_class_index.json'
+        class_name_path: str = 'data/imagenet/imagenet_class_index.json',
+        oracle_data_dir: Optional[str] = None,
     ):
         self.id_dataset_dir = id_dataset_dir
         self.ood_dataset_dir = ood_dataset_dir
         self.class_name_path = class_name_path
         self.name = name
+        self.oracle_data_dir = oracle_data_dir
 
         # # TODO: May not match with class label indices.
         # with open(class_name_path, 'rb') as f:
@@ -93,7 +95,6 @@ class ImageNetCrossOODDataset(BaseOODDataModule):
         
         self.seen_idx = torch.arange(1000)
 
-        
     def get_splits(
         self, 
         n_samples_per_class: int, 
@@ -102,6 +103,7 @@ class ImageNetCrossOODDataset(BaseOODDataModule):
         batch_size: int,
         shuffle: bool = True,
         transform: Optional[Callable] = None,
+        n_few_shot_samples: Optional[int] = None,
     ):
         self.id_datasets = [
             SplitOODDataset(
@@ -138,9 +140,16 @@ class ImageNetCrossOODDataset(BaseOODDataModule):
         )
 
         for i, (id_dataset, ood_dataset) in enumerate(zip(self.id_datasets, self.ood_datasets)):
+            if self.oracle_data_dir is not None:
+                oracle_dataset = ImageFolder(
+                    self.oracle_data_dir,
+                    transform=transform,
+                )
+            else:
+                oracle_dataset = self.id_datasets[(i + 1) % len(self.id_datasets)],
 
             given_images, ref_images = self._sample_given_images(
-                dataset=self.id_datasets[(i + 1) % len(self.id_datasets)],
+                dataset=oracle_dataset,
                 n_samples_per_class=n_samples_per_class,
                 n_ref_samples=int(np.ceil(n_ref_samples / len(self.seen_idx))),
                 seed=seed,
@@ -149,7 +158,12 @@ class ImageNetCrossOODDataset(BaseOODDataModule):
             if self.ref_mode in ('oracle', 'in_batch'):
                 ref_images = None
             elif self.ref_mode == 'rand_id':
-                ref_images = random.Random(seed).choices(ref_images, k=n_ref_samples)
+                ref_images_idx = np.random.default_rng(seed).choice(
+                    len(ref_images),
+                    size=n_ref_samples,
+                    replace=False,
+                )
+                ref_images = [ref_images[idx] for idx in ref_images_idx]
                 ref_images = torch.stack(ref_images)
             else:
                 raise ValueError()
@@ -160,7 +174,7 @@ class ImageNetCrossOODDataset(BaseOODDataModule):
                 num_workers=2, 
                 shuffle=shuffle
             )
-            yield self.class_names, self.seen_idx, given_images, ref_images, None, loader
+            yield self.class_names, self.seen_idx, given_images, ref_images, None, loader, None
 
     def _sample_given_images(
         self, 

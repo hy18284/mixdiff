@@ -7,13 +7,9 @@ from typing import (
 import torch
 import torch.nn.functional as F
 import wandb
-from transformers import (
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-)
 from tqdm import tqdm
 
-from .ood_score_calculator import OODScoreCalculator
+from .backbones.base_backbone import BaseBackbone
 from ..mixup_operators import BaseMixupOperator
 from ..utils import log_mixup_samples
 
@@ -21,6 +17,7 @@ from ..utils import log_mixup_samples
 class MixDiffLogitBasedMixinText:
     def __init__(
         self,
+        backbone: BaseBackbone,
         batch_size: int,
         utilize_mixup: bool = True,
         add_base_score: bool = True,
@@ -31,6 +28,7 @@ class MixDiffLogitBasedMixinText:
         aux_sim_mode: str = 'uniform',
         aux_sim_temp: float = 1.0,
     ):
+        self.backbone = backbone
         self.batch_size = batch_size
         self.utilize_mixup = utilize_mixup
         self.add_base_score = add_base_score
@@ -47,11 +45,7 @@ class MixDiffLogitBasedMixinText:
         self.known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
     
     def load_model(self, backbone_name, device):
-        self.device = device
-        self.model = AutoModelForSequenceClassification.from_pretrained(backbone_name)
-        self.model.to(self.device)
-        self.model.eval()
-        self.tokenizer = AutoTokenizer.from_pretrained(backbone_name)
+        self.load_model(backbone_name=backbone_name, device=device)
 
     def on_eval_start(
         self, 
@@ -64,10 +58,16 @@ class MixDiffLogitBasedMixinText:
         iter_idx,
         model_path,
     ):
-        if model_path is not None:
-            self.model = AutoModelForSequenceClassification.from_pretrained(model_path)
-            self.model.to(self.device)
-            self.model.eval()
+        self.backbone.on_eval_start(
+            seen_labels, 
+            given_images, 
+            mixup_fn,
+            ref_images,
+            rates,
+            seed,
+            iter_idx,
+            model_path,
+        )
 
         if not self.utilize_mixup:
             return
@@ -81,16 +81,7 @@ class MixDiffLogitBasedMixinText:
             ]
             logits_list = []
             for split_images in images_list:
-                batch = self.tokenizer(
-                    split_images,
-                    add_special_tokens=True,
-                    padding=True,
-                    return_tensors='pt',
-                    return_attention_mask=True,
-                )
-                for key in batch:
-                    batch[key] = batch[key].to(self.device)
-                split_logits = self.model(**batch).logits
+                split_logits = self.backbone.process_images(split_images)
                 if self.intermediate_state == 'softmax':
                     split_logits = torch.softmax(split_logits, dim=-1)
                 logits_list.append(split_logits) 
@@ -298,23 +289,7 @@ class MixDiffLogitBasedMixinText:
             return f'mixdiff_{self.name}_{sel_mode}{inter_state}'
     
     def _process_samples(self, images: List[str]):
-        images_list = [
-            images[i : i + self.batch_size]
-            for i in range(0, len(images), self.batch_size)
-        ]
-        logits_list = []
-        for split_images in images_list:
-            batch = self.tokenizer(
-                split_images,
-                add_special_tokens=True,
-                padding=True,
-                return_tensors='pt',
-                return_attention_mask=True,
-            )
-            for key in batch:
-                batch[key] = batch[key].to(self.device)
-            split_logits = self.model(**batch).logits
-            if self.intermediate_state == 'softmax':
-                split_logits = torch.softmax(split_logits, dim=-1)
-            logits_list.append(split_logits) 
-        return torch.cat(logits_list, dim=0)
+        logits = self.backbone.process_images(images) 
+        if self.intermediate_state == 'softmax':
+            logits = torch.softmax(logits, dim=-1)
+        return logits

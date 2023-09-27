@@ -8,6 +8,7 @@ from collections import defaultdict
 import itertools
 import copy
 import math
+import numpy as np
 
 import torch
 from torchvision.datasets import Caltech101
@@ -95,10 +96,12 @@ class Caltech101OODDataset(BaseOODDataModule):
 
         self.seen_classes = []
         for seed in range(NUM_SPLITS):
-            seen_classes = random.Random(seed).choices(
+            seen_classes = np.random.default_rng(seed).choice(
                 list(self.class2idx.keys()), 
-                k=20,
+                size=20,
+                replace=False,
             )
+            seen_classes = list(seen_classes)
             self.seen_classes.append(seen_classes)
 
     def get_splits(
@@ -109,6 +112,7 @@ class Caltech101OODDataset(BaseOODDataModule):
         batch_size: int,
         shuffle: bool = True,
         transform: Optional[Callable] = None,
+        n_few_shot_samples: Optional[int] = None,
     ):
         self.val = SimpleCaltech101(copy.deepcopy(self.val_dict), transform)
         self.train_per_class = {
@@ -148,12 +152,17 @@ class Caltech101OODDataset(BaseOODDataModule):
                 ref_images = None
             elif self.ref_mode == 'rand_id':
                 ref_images = torch.cat(ref_images, dim=0)
-                ref_images = random.Random(seed).choices(ref_images, k=n_ref_samples)
+                ref_images_idx = np.random.default_rng(seed).choice(
+                    len(ref_images),
+                    size=n_ref_samples,
+                    replace=False,
+                )
+                ref_images = [ref_images[idx] for idx in ref_images_idx]
                 ref_images = torch.stack(ref_images)
             else:
                 raise ValueError()
 
-            yield seen_class_names, seen_class_idx, given_images, ref_images, None, loader
+            yield seen_class_names, seen_class_idx, given_images, ref_images, None, loader, None
 
     def sample_given_images(
         self, 
@@ -164,7 +173,11 @@ class Caltech101OODDataset(BaseOODDataModule):
         given_images = []
         for seen_class_name in seen_class_names:
             dataset = self.train_per_class[seen_class_name]
-            pairs = random.Random(seed).choices(dataset, k=n_samples_per_class)
+            pairs = np.random.default_rng(seed).choice(
+                dataset, 
+                size=n_samples_per_class,
+                replace=False,
+            )
             images = [image for image, _ in pairs]
             images = torch.stack(images)
             given_images.append(images)

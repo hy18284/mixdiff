@@ -57,6 +57,7 @@ class MixDiffLogitBasedMixin:
         seed,
         iter_idx,
         model_path,
+        few_shot_samples,
     ):
         given_images = given_images.to(self.device)
         if ref_images is not None:
@@ -71,6 +72,7 @@ class MixDiffLogitBasedMixin:
             seed,
             iter_idx,
             model_path,
+            few_shot_samples,
         )
 
         if self.selection_mode in ('euclidean', 'dot', 'kl') or self.oracle_sim_mode != 'uniform':

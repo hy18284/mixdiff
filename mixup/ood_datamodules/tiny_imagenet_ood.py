@@ -1,3 +1,7 @@
+from typing import (
+    Callable,
+    Optional,
+) 
 import random
 import glob
 import os
@@ -48,6 +52,8 @@ class TinyImageNetOODDataset(BaseOODDataModule):
         n_ref_samples: int,
         batch_size: int,
         shuffle: bool = True,
+        transform: Optional[Callable] = None,
+        n_few_shot_samples: Optional[int] = None,
     ):
         loader = DataLoader(
             self.tiny_imagenet, 
@@ -78,7 +84,7 @@ class TinyImageNetOODDataset(BaseOODDataModule):
             else:
                 raise ValueError()
 
-            yield seen_class_names, seen_class_idx, given_images, ref_images, None, loader
+            yield seen_class_names, seen_class_idx, given_images, ref_images, None, loader, None
 
     def sample_given_images(
         self, 

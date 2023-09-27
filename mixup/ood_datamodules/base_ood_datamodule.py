@@ -1,4 +1,8 @@
-from typing import Any
+from typing import (
+    Any,
+    Optional,
+    Callable,
+)
 from abc import ABC, abstractmethod
 
 
@@ -14,6 +18,8 @@ class BaseOODDataModule(ABC):
         n_ref_samples: int,
         batch_size: int,
         shuffle: bool = True,
+        transform: Optional[Callable] = None,
+        n_few_shot_samples: Optional[int] = None,
     ):
         pass
 
