@@ -31,7 +31,7 @@ do
                                         --r_ref 0 \
                                         --seed 0 \
                                         --wandb_name post \
-                                        --wandb_tags post_transform \
+                                        --wandb_tags post_transform diff_ratio \
                                         --wandb_project ZOC \
                                         --device 0 \
                                         --ref_mode rand_id \
