@@ -1,4 +1,4 @@
-mixup/ood_score_calculators/mixdot_msp.pyfor method in \
+for method in \
     MixDiffMaxSofmaxProb
     
 do 
