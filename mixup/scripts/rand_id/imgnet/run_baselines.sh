@@ -1,5 +1,4 @@
 for method in \
-    MixDiffEntropy \
     MixDiffMaxSofmaxProb
 do 
     for dataset in \
@@ -31,8 +30,8 @@ do
                                         --gamma $gamma \
                                         --r_ref 0 \
                                         --seed 0 \
-                                        --wandb_name \
-                                        --wandb_tags post_transform diff_ratio \
+                                        --wandb_name '' \
+                                        --wandb_tags \
                                         --wandb_project ZOC \
                                         --device 0 \
                                         --ref_mode in_batch \
