@@ -185,7 +185,10 @@ class ImageNetCrossOODDataset(BaseOODDataModule):
     ):
         label_2_images = defaultdict(list)
         filled_labels = set()
-        for image, label in tqdm(dataset, desc='Selecting oracle samples...'):
+        indices = list(range(len(dataset)))
+        random.Random(seed).shuffle(indices)
+        for idx in tqdm(indices, desc='Selecting oracle samples...'):
+            image, label = dataset[idx]
             label_2_images[label].append(image)
             if len(label_2_images[label]) >= n_samples_per_class + n_ref_samples:
                 filled_labels.add(label)
