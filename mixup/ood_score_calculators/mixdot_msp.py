@@ -26,4 +26,4 @@ class MixDotMaxSoftmaxProb(
 
     def __str__(self) -> str:
         # TODO: May not be the greatest way to handle this.
-        return super().__str__().replace('mixdiff', 'mixsim')
+        return super().__str__().replace('mixdiff', 'mixdot')
