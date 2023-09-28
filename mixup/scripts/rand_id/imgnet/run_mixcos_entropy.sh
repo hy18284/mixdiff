@@ -9,7 +9,7 @@ do
     do
         for gamma in 2.0
         do
-            for n in 10
+            for n in 100
             do
                 for m in 10
                 do
@@ -41,7 +41,7 @@ do
                                         --score_calculator.class_path mixup.ood_score_calculators.$method \
                                         --score_calculator.init_args.backbone.class_path mixup.ood_score_calculators.backbones.ClipBackbone \
                                         --score_calculator.init_args.backbone.init_args.post_transform true \
-                                        --score_calculator.init_args.batch_size 1000 \
+                                        --score_calculator.init_args.batch_size 2000 \
                                         --score_calculator.init_args.log_interval null \
                                         --score_calculator.init_args.intermediate_state softmax \
                                         --score_calculator.init_args.oracle_sim_mode uniform \
