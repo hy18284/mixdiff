@@ -1,5 +1,5 @@
 for method in \
-    MixDotEntropy
+    MixDiffMaxSofmaxProb
 do 
     for dataset in \
         "data/Places places" \
@@ -11,11 +11,11 @@ do
         do
             for n in 100
             do
-                for m in 10
+                for m in 2
                 do
-                    for p in 14
+                    for p in 2
                     do
-                        for r in 5
+                        for r in 2
                         do
                             for sim_temp in 0.01
                             do
@@ -30,11 +30,11 @@ do
                                         --gamma $gamma \
                                         --r_ref 0 \
                                         --seed 0 \
-                                        --wandb_name post \
-                                        --wandb_tags post_transform diff_ratio \
+                                        --wandb_name '' \
+                                        --wandb_tags \
                                         --wandb_project ZOC \
                                         --device 0 \
-                                        --ref_mode rand_id \
+                                        --ref_mode in_batch \
                                         --model_path 'ViT-B/32' \
                                         --max_samples null \
                                         --id_as_neg false \
@@ -46,7 +46,7 @@ do
                                         --score_calculator.init_args.intermediate_state softmax \
                                         --score_calculator.init_args.oracle_sim_mode uniform \
                                         --score_calculator.init_args.oracle_sim_temp $sim_temp \
-                                        --score_calculator.init_args.utilize_mixup true \
+                                        --score_calculator.init_args.utilize_mixup false \
                                         --score_calculator.init_args.selection_mode $selection_mode \
                                         --score_calculator.init_args.add_base_score true \
                                         --fnr_at 0.95 \
