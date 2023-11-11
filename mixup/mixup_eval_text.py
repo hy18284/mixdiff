@@ -242,8 +242,6 @@ if __name__ == '__main__':
                         dummy = [images[0]] * (batch_size - len(images))
                         images += dummy
 
-                NC = len(seen_idx)
-
                 labels = labels.to(device)
                 if torch.is_tensor(images):
                     images = images.to(device)
@@ -342,6 +340,7 @@ if __name__ == '__main__':
                         known_mixup, 
                         **image_kwargs
                     )
+                    NC = known_logits.size(-1)
                     if args.ref_mode == 'in_batch' or args.ref_mode == 'rand_id':
                         known_logits = known_logits.view(N, M, P, R, -1)
                         known_logits = torch.mean(known_logits, dim=1).view(-1, NC)

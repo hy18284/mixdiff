@@ -14,6 +14,7 @@ from .mixmaxdiff_msp import MixMaxDiffMaxSofmaxProb
 from .mixcos_msp import MixCosMaxSoftmaxProb
 from .mixcos_entropy import MixCosEntropy
 from .mixdot_entropy import MixDotEntropy
+from .mixdiff_ood_class import MixDiffOODClass
 
 from .mixdiff_energy_text import MixDiffEnergyText
 from .mixdiff_entropy_text import MixDiffEntropyText

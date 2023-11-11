@@ -7,6 +7,8 @@ from typing import (
 import torch
 import torch.nn.functional as F
 import wandb
+import numpy as np
+import random
 from tqdm import tqdm
 
 from .backbones.base_backbone import BaseBackbone
@@ -163,7 +165,13 @@ class MixDiffLogitBasedMixinText:
         if self.selection_mode == 'argmax':
             # (N, NC) -> (N)
             max_indices = torch.argmax(logits, dim=-1)
-            chosen_images = [given_images[idx] for idx in max_indices]
+            chosen_images = []
+            for idx in max_indices:
+                if idx < len(given_images):
+                    chosen = given_images[idx]
+                else:
+                    chosen = random.choice(given_images)
+                chosen_images.append(chosen)
 
         elif self.selection_mode == 'euclidean' or self.selection_mode == 'dot':
             if self.selection_mode == 'euclidean':
@@ -219,7 +227,17 @@ class MixDiffLogitBasedMixinText:
             # (N, NC) -> (N)
             max_indices = torch.argmax(logits, dim=-1)
             # (NC, M * P * R, NC) -> (N, M * P * R, NC)
-            mixed_logits = self.oracle_logits[max_indices]
+            # mixed_logits = self.oracle_logits[max_indices]
+            
+            mixed_logits = [] 
+            for idx in max_indices:
+                if idx < len(self.oracle_logits):
+                    chosen = self.oracle_logits[idx]
+                else:
+                    chosen = random.choice(self.oracle_logits)
+                mixed_logits.append(chosen)
+            mixed_logits = torch.stack(mixed_logits)
+
         elif self.ref_mode == 'in_batch':
             mixed_logits = self._process_samples(images)
         else:

@@ -1,7 +1,8 @@
 #!/bin/bash
 
 for method in \
-    MixCosSoftmaxProb 
+    MixCosEntropy \
+    MixDotEntropy
 do 
     for dataset in \
         ImageNetCrossOODDataset
@@ -9,15 +10,15 @@ do
         for mixup_fn in \
             InterpolationMixup
         do
-            for gamma in 2.0 1.0 0.5
+            for gamma in 1.0
             do
                 for n in 1
                 do
-                    for m in 7
+                    for m in 2
                     do
-                        for p in 1
+                        for p in 2
                         do
-                            for r in 5
+                            for r in 2
                             do
                                 for sim_temp in 0.01
                                 do
@@ -31,10 +32,10 @@ do
                                             --gamma $gamma \
                                             --r_ref 0 \
                                             --seed 0 \
-                                            --wandb_name clip_post \
+                                            --wandb_name train_debug \
                                             --wandb_project ZOC_debug \
                                             --device 0 \
-                                            --ref_mode oracle \
+                                            --ref_mode rand_id \
                                             --model_path 'ViT-B/32' \
                                             --max_samples null \
                                             --id_as_neg false \
@@ -55,6 +56,7 @@ do
                                             --datamodule.class_path mixup.ood_datamodules.$dataset \
                                             --datamodule.init_args.ood_dataset_dir data/dtd/images \
                                             --datamodule.init_args.name imgnet_textures \
+                                            --datamodule.init_args.oracle_data_dir data/imagenet/val \
                                             --mixup_operator.class_path mixup.mixup_operators.$mixup_fn
                                     done
                                 done

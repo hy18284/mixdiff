@@ -4,6 +4,8 @@ import itertools
 from jsonargparse import ArgumentParser
 from typing import (
     List,
+    Callable,
+    Optional,
 )
 import yaml
 import copy
@@ -145,10 +147,16 @@ class ClassSplitOODDataset(BaseOODDataModule):
         n_samples_per_class: int, 
         seed: int, 
         n_ref_samples,
+        batch_size: int,
+        shuffle: bool = True,
+        transform: Optional[Callable] = None,
+        n_few_shot_samples: Optional[int] = None,
     ):
         for train_dataset, dataset, model_path in self._connector.iterate_datasets():
             self.train_dataset = train_dataset
             self.dataset = dataset
+
+            loader = self.construct_loader(batch_size=batch_size, shuffle=shuffle)
 
             seen_indices = set()
             for seen_intent in self.train_dataset.intents:
@@ -157,10 +165,11 @@ class ClassSplitOODDataset(BaseOODDataModule):
                         seen_indices.add(idx)
             seen_indices = list(seen_indices)
 
-            given_images, ref_images = self.sample_given_images(
+            given_images, ref_images, few_shot_images = self.sample_given_images(
                 n_samples_per_class, 
                 seed, 
                 n_ref_samples,
+                n_few_shot_samples,
             )
             if self.ref_mode == 'oracle':
                 ref_images = given_images
@@ -175,6 +184,8 @@ class ClassSplitOODDataset(BaseOODDataModule):
                 given_images,
                 ref_images,
                 model_path,
+                loader,
+                few_shot_images,
             )
     
     def sample_given_images(
@@ -182,6 +193,7 @@ class ClassSplitOODDataset(BaseOODDataModule):
         n_samples_per_class: int,
         seed: int,
         n_ref_samples: int = None,
+        n_few_shot_samples: int = 0,
     ):
         label_2_samples = defaultdict(list) 
         for idx in range(len(self.train_dataset)):
@@ -189,39 +201,59 @@ class ClassSplitOODDataset(BaseOODDataModule):
             sample, label = pair['query'], pair['label']
             label_2_samples[label].append(sample)
 
+        n_extra_samples = 0
         if n_ref_samples is not None:
-            n_ref_per_class = n_ref_samples / len(label_2_samples)
-            n_ref_per_class = int(np.ceil(n_ref_per_class))
-        else:
-            n_ref_per_class = 0
-            
+            n_extra_samples += n_ref_samples
+        if n_few_shot_samples is not None:
+            n_extra_samples += n_few_shot_samples
+
+        n_extra_per_class = n_extra_samples / len(label_2_samples)
+        n_extra_per_class = int(np.ceil(n_extra_per_class))
+
         given_images = []
         for label in range(len(self.train_dataset.intents)):
-            images = random.Random(seed).choices(
+            images = np.random.default_rng(seed).choice(
                 label_2_samples[label], 
-                k=n_samples_per_class + n_ref_per_class
+                size=n_samples_per_class + n_extra_per_class,
+                replace=False,
             )
+            images = list(images)
             given_images.append(images)
 
-        if n_ref_samples is not None:
-            ref_images = [
-                given[n_samples_per_class:] for given
-                in given_images
+        ref_images = [
+            given[n_samples_per_class:n_samples_per_class + n_ref_samples]
+            for given in given_images
+        ]
+        ref_images = list(itertools.chain.from_iterable(ref_images))
+        ref_images = np.random.default_rng(seed).choice(
+            ref_images, 
+            size=n_ref_samples,
+            replace=False,
+        )
+        ref_images = list(ref_images)
+
+        few_shot_images = [
+            [ 
+                (image, intent) for image 
+                in given[n_samples_per_class + n_ref_samples:]
             ]
-            ref_images = list(itertools.chain.from_iterable(ref_images))
-            ref_images = random.Random(seed).choices(
-                ref_images, 
-                k=n_ref_samples
-            )
-        else:
-            ref_images = None
+            for given, intent in zip(given_images, self.train_dataset.intents)
+        ]
+
+        few_shot_images = list(itertools.chain.from_iterable(few_shot_images))
+        few_shot_images = np.random.default_rng(seed).choice(
+            few_shot_images, 
+            size=n_few_shot_samples,
+            replace=False,
+        )
+        few_shot_images = list(few_shot_images)
         
         given_images = [
             given[:n_samples_per_class] for given
             in given_images
         ]
 
-        return given_images, ref_images
+        return given_images, ref_images, few_shot_images
     
     def construct_loader(self, batch_size: int, shuffle: bool = True):
 

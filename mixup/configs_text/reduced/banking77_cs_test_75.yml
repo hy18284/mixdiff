@@ -1,0 +1,26 @@
+train_dataset:
+  class_path: text_classification.banking77_datamodule.Banking77
+  init_args:
+    mode: train
+    tokenizer_path: bert-base-uncased
+    oos_data: null
+    beautify_intents: true
+    val_ratio: 0.1
+    seed: 42
+
+eval_dataset:
+  class_path: text_classification.banking77_datamodule.Banking77
+  init_args:
+    mode: test
+    tokenizer_path: bert-base-uncased
+    oos_data: null
+    beautify_intents: true
+
+test_seeds:  [0, 1, 2]
+test_id_ratios: [0.75]
+
+ood_labels: []
+mode: test
+
+model_path: checkpoints/banking77_cs/ts_{}_tr_{}
+name: cs_t75_banking

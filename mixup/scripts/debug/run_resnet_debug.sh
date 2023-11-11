@@ -42,6 +42,7 @@ do
                                             --id_as_neg false \
                                             --score_calculator.class_path mixup.ood_score_calculators.$method \
                                             --score_calculator.init_args.backbone.class_path mixup.ood_score_calculators.backbones.ResNetBackbone \
+                                            --score_calculator.init_args.backbone.post_transform true \
                                             --score_calculator.init_args.batch_size 1 \
                                             --score_calculator.init_args.log_interval null \
                                             --score_calculator.init_args.intermediate_state softmax \
