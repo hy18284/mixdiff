@@ -79,7 +79,15 @@ class SimpleCaltech101(Dataset):
 
 
 class Caltech101OODDataset(BaseOODDataModule):
-    def __init__(self, ):
+    def __init__(
+        self, 
+        with_replacement: bool = False,
+        val_ratio = 0.50,
+        num_splits = 3,
+    ):
+        self.with_replacement = with_replacement
+        self.val_ratio = val_ratio
+        self.num_splits = num_splits
         dataset = Caltech101(
             root='./data',
             target_type='category',
@@ -90,17 +98,23 @@ class Caltech101OODDataset(BaseOODDataModule):
         class2data = split_by_class(dataset)
         self.train_dict, self.val_dict = split_train_val(
             class2data, 
-            ratio=VAL_RATIO, 
+            ratio=self.val_ratio, 
             seed=SEED,
         )
 
         self.seen_classes = []
-        for seed in range(NUM_SPLITS):
-            seen_classes = np.random.default_rng(seed).choice(
-                list(self.class2idx.keys()), 
-                size=20,
-                replace=False,
-            )
+        for seed in range(self.num_splits):
+            if self.with_replacement:
+                seen_classes = random.Random(seed).choices(
+                    list(self.class2idx.keys()), 
+                    k=20,
+                )
+            else:
+                seen_classes = np.random.default_rng(seed).choice(
+                    list(self.class2idx.keys()), 
+                    size=20,
+                    replace=False,
+                )
             seen_classes = list(seen_classes)
             self.seen_classes.append(seen_classes)
 
@@ -152,12 +166,15 @@ class Caltech101OODDataset(BaseOODDataModule):
                 ref_images = None
             elif self.ref_mode == 'rand_id':
                 ref_images = torch.cat(ref_images, dim=0)
-                ref_images_idx = np.random.default_rng(seed).choice(
-                    len(ref_images),
-                    size=n_ref_samples,
-                    replace=False,
-                )
-                ref_images = [ref_images[idx] for idx in ref_images_idx]
+                if self.with_replacement:
+                    ref_images = random.Random(seed).choices(ref_images, k=n_ref_samples)
+                else:
+                    ref_images_idx = np.random.default_rng(seed).choice(
+                        len(ref_images),
+                        size=n_ref_samples,
+                        replace=False,
+                    )
+                    ref_images = [ref_images[idx] for idx in ref_images_idx]
                 ref_images = torch.stack(ref_images)
             else:
                 raise ValueError()
@@ -173,11 +190,14 @@ class Caltech101OODDataset(BaseOODDataModule):
         given_images = []
         for seen_class_name in seen_class_names:
             dataset = self.train_per_class[seen_class_name]
-            pairs = np.random.default_rng(seed).choice(
-                dataset, 
-                size=n_samples_per_class,
-                replace=False,
-            )
+            if self.with_replacement:
+                pairs = random.Random(seed).choices(dataset, k=n_samples_per_class)
+            else:
+                pairs = np.random.default_rng(seed).choice(
+                    dataset, 
+                    size=n_samples_per_class,
+                    replace=False,
+                )
             images = [image for image, _ in pairs]
             images = torch.stack(images)
             given_images.append(images)
