@@ -5,7 +5,8 @@ do
     for ref_mode in in_batch
     do
         for method in \
-            MixDiffEntropy
+            MixDiffEntropy \
+            MixDiffMaxSofmaxProb
         do 
             for dataset in \
                 Caltech101OODDataset
