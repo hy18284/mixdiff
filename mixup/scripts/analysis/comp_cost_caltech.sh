@@ -34,7 +34,7 @@ do
                                         --r_ref 0 \
                                         --seed 0 \
                                         --wandb_name 'comp' \
-                                        --wandb_project ZOC_debug \
+                                        --wandb_project ZOC \
                                         --wandb_tags comp_analysis \
                                         --device 0 \
                                         --ref_mode $ref_mode \
