@@ -5,7 +5,7 @@ do
     for ref_mode in in_batch
     do
         for method in \
-            MixDiffMaxSofmaxProb
+            MixDiffEntropy
         do 
             for dataset in \
                 CIFAR100OODDataset \
