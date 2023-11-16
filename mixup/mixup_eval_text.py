@@ -28,6 +28,7 @@ from .utils import (
     calculate_fpr_at,
     calculate_ood_metrics,
 )
+from .adversarial.confidence_pgd_attack import ConfidenceLinfPGDAttack
 
 
 def parse_args():
@@ -54,9 +55,13 @@ def parse_args():
     parser.add_argument('--fpr_at', type=float, default=0.95)
     parser.add_argument('--id_as_neg', type=bool, default=True)
     parser.add_argument('--log_interval', type=Optional[int], default=None)
+    parser.add_argument('--attack', type=Optional[str], default=None, choices=['id2ood', 'ood2id', 'both', 'none'])
+    parser.add_argument('--attack_eps', type=Optional[float], default=None)
+    parser.add_argument('--attack_nb_iter', type=Optional[int], default=None)
     parser.add_subclass_arguments(OODScoreCalculator, 'score_calculator')
     parser.add_subclass_arguments(BaseOODDataModule, 'datamodule')
     parser.add_subclass_arguments(BaseMixupOperator, 'mixup_operator')
+    # parser.add_subclass_arguments(ConfidenceLinfPGDAttack, 'attack', required=False, default=None)
     parser.add_argument('--config', action=ActionConfigFile)
 
     args = parser.parse_args()
@@ -118,6 +123,26 @@ if __name__ == '__main__':
     score_calculator: OODScoreCalculator = classes['score_calculator']
     datamodule: BaseOODDataModule = classes['datamodule']
     mixup_fn: BaseMixupOperator = classes['mixup_operator']
+    # attack = classes['attack']
+    if args.attack in ['ood2id', 'both']:
+        ood2id_attack = ConfidenceLinfPGDAttack(
+            model=score_calculator, 
+            eps=args.attack_eps, 
+            nb_iter=args.attack_nb_iter, 
+            in_distribution=False,
+        )
+    else:
+        ood2id_attack = None
+
+    if args.attack in ['id2ood', 'both']:
+        id2ood_attack = ConfidenceLinfPGDAttack(
+            model=score_calculator, 
+            eps=args.attack_eps, 
+            nb_iter=args.attack_nb_iter, 
+            in_distribution=True,
+        )
+    else:
+        id2ood_attack = None
 
     datamodule.ref_mode = args.ref_mode
     score_calculator.ref_mode = args.ref_mode
@@ -238,6 +263,8 @@ if __name__ == '__main__':
                     if torch.is_tensor(images):
                         dummy = images[:1].expand((batch_size - len(images)), -1, -1, -1)
                         images = torch.cat([images, dummy], dim=0)
+                        dummy = torch.zeros(batch_size - len(labels), dtype=labels.dtype)
+                        labels = torch.cat([labels, dummy], dim=0)
                     else:
                         dummy = [images[0]] * (batch_size - len(images))
                         images += dummy
@@ -249,6 +276,22 @@ if __name__ == '__main__':
                     given_images = given_images.to(device)
                 if torch.is_tensor(ref_images):
                     ref_images = ref_images.to(device)
+                
+                if id2ood_attack is not None:
+                    id_mask = [label in seen_idx for label in labels]
+                    if any(id_mask):
+                        id_images = images[id_mask] 
+                        with torch.enable_grad():
+                            id_images = id2ood_attack.perturb(id_images)
+                        images[id_mask] = id_images
+                    
+                if ood2id_attack is not None:
+                    ood_mask = [label not in seen_idx for label in labels]
+                    if any(ood_mask):
+                        ood_images = images[ood_mask] 
+                        with torch.enable_grad():
+                            ood_images = ood2id_attack.perturb(ood_images)
+                        images[ood_mask] = ood_images
 
                 image_kwargs = score_calculator.process_images(
                     score_calculator.post_transform(images)

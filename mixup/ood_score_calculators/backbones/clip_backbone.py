@@ -73,7 +73,7 @@ class ClipBackbone(BaseBackbone):
     
     def process_images(self, images):
         image_embeds = self.clip_model.encode_image(images)
-        image_embeds /= torch.norm(image_embeds, dim=-1, keepdim=True)
+        image_embeds = image_embeds / torch.norm(image_embeds, dim=-1, keepdim=True)
         logit_scale = self.clip_model.logit_scale.exp()
         logits = logit_scale * image_embeds @ self.prompts_embeds.t()
         return logits.float()

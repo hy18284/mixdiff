@@ -18,9 +18,11 @@ class HLoss(nn.Module):
         super(HLoss, self).__init__()
 
     def forward(self, x):
-        b = F.softmax(x, dim=1) * F.log_softmax(x, dim=1)
-        b = -1.0 * b.sum()
-        return b
+        prob = F.softmax(x, dim=1)
+        log_prob = F.log_softmax(x, dim=1)
+        entropy = prob * log_prob
+        entropy = -1.0 * entropy.sum()
+        return entropy
 
 class OELoss(nn.Module):
     def __init__(self):
@@ -72,7 +74,6 @@ class ConfidenceLinfPGDAttack:
         :param x: input tensor.
         :return: tensor containing perturbed inputs.
         """
-
         x = x.detach().clone()
 
         delta = torch.zeros_like(x)

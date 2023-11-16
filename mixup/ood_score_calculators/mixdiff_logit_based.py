@@ -4,6 +4,7 @@ from typing import (
 
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 from tqdm import tqdm
 import wandb
 import random
@@ -14,7 +15,7 @@ from ..utils import log_mixup_samples
 from .backbones.base_backbone import BaseBackbone
 
 
-class MixDiffLogitBasedMixin:
+class MixDiffLogitBasedMixin(nn.Module):
     def __init__(
         self,
         batch_size: int,
@@ -27,6 +28,7 @@ class MixDiffLogitBasedMixin:
         oracle_sim_temp: float = 1.0,
         log_interval: Optional[int] = None,
     ):
+        super().__init__()
         self.backbone = backbone
         self.batch_size = batch_size
         self.utilize_mixup = utilize_mixup
@@ -285,8 +287,7 @@ class MixDiffLogitBasedMixin:
             mixed_logits = mixed_logits * self.M
 
         return mixed_logits
-
-    @torch.no_grad()
+    
     def _process_images(
         self,
         images,
@@ -338,3 +339,7 @@ class MixDiffLogitBasedMixin:
 
     def post_transform(self, images):
         return self.backbone.post_transform(images)
+
+    def forward(self, images):
+        images = self.post_transform(images)
+        return self._process_images(images)
