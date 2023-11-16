@@ -3,6 +3,7 @@ from typing import (
     Callable,
 )
 import random
+import numpy as np
 
 import torch
 from torchvision.datasets import CIFAR100
@@ -35,10 +36,9 @@ class CIFAR100Wrapper(CIFAR100):
 
 
 class CIFAR100OODDataset(BaseOODDataModule):
-    def __init__(self, max_split: Optional[int] = None):
+    def __init__(self, max_split: Optional[int] = None, with_replacement: bool = True):
+        self.with_replacement = with_replacement
         self.cifar100_loaders_train = cifar100_single_isolated_class_loader(train=True)
-        self.cifar100 = CIFAR100Wrapper(root='./data', train=False, download=True)
-        self.idx2class = {v:k for k,v in self.cifar100.class_to_idx.items()}
         self.splits = [
             list(range(20)), 
             list(range(20, 40)), 
@@ -58,6 +58,13 @@ class CIFAR100OODDataset(BaseOODDataModule):
         transform: Optional[Callable] = None,
         n_few_shot_samples: Optional[int] = None,
     ):
+        self.cifar100 = CIFAR100(
+            root='./data', 
+            train=False, 
+            download=True, 
+            transform=transform,
+        )
+        self.idx2class = {v:k for k,v in self.cifar100.class_to_idx.items()}
         loader = DataLoader(
             self.cifar100, 
             batch_size=batch_size, 
@@ -90,7 +97,16 @@ class CIFAR100OODDataset(BaseOODDataModule):
                 ref_images = None
             elif self.ref_mode == 'rand_id':
                 ref_images = torch.cat(ref_images, dim=0)
-                ref_images = random.Random(seed).choices(ref_images, k=n_ref_samples)
+                if self.with_replacement:
+                    ref_images = random.Random(seed).choices(ref_images, k=n_ref_samples)
+                else:
+                    ref_images_idx = np.random.default_rng(seed).choice(
+                        len(ref_images),
+                        size=n_ref_samples,
+                        replace=False,
+                    )
+                    ref_images = [ref_images[idx] for idx in ref_images_idx]
+
                 ref_images = torch.stack(ref_images)
             else:
                 raise ValueError()
@@ -106,7 +122,15 @@ class CIFAR100OODDataset(BaseOODDataModule):
         given_images = []
         for seen_class_name in seen_class_names:
             loader = self.cifar100_loaders_train[seen_class_name]
-            images = random.Random(seed).choices(loader.dataset, k=n_samples_per_class)
+            if self.with_replacement:
+                images = random.Random(seed).choices(loader.dataset, k=n_samples_per_class)
+            else:
+                images_idx = np.random.default_rng(seed).choice(
+                    len(loader.dataset),
+                    size=n_samples_per_class,
+                    replace=False,
+                )
+                images = [loader.dataset[idx] for idx in images_idx]
             images = torch.stack(images)
             given_images.append(images)
         
