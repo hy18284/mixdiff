@@ -58,6 +58,7 @@ def parse_args():
     parser.add_argument('--attack', type=Optional[str], default=None, choices=['id2ood', 'ood2id', 'both', 'none'])
     parser.add_argument('--attack_eps', type=Optional[float], default=None)
     parser.add_argument('--attack_nb_iter', type=Optional[int], default=None)
+    parser.add_argument('--trans_before_mixup', type=bool, default=True)
     parser.add_subclass_arguments(OODScoreCalculator, 'score_calculator')
     parser.add_subclass_arguments(BaseOODDataModule, 'datamodule')
     parser.add_subclass_arguments(BaseMixupOperator, 'mixup_operator')
@@ -244,6 +245,9 @@ if __name__ == '__main__':
             mixdiff_scores_log = []
             base_scores_log = []
 
+            mixup_fn.pre_transform = score_calculator.post_transform if args.trans_before_mixup else None
+            mixup_fn.post_transform = score_calculator.post_transform if not args.trans_before_mixup else None
+
             score_calculator.on_eval_start(
                 seen_labels=copy.deepcopy(seen_labels),
                 given_images=copy.deepcopy(given_images),
@@ -349,10 +353,10 @@ if __name__ == '__main__':
                             unknown_mixup = torch.cat(unknown_mixup, dim=0)
                         known_mixup = None
                     
-                    if known_mixup is not None:
-                        known_mixup = score_calculator.post_transform(known_mixup)
-                    if unknown_mixup is not None:
-                        unknown_mixup = score_calculator.post_transform(unknown_mixup)
+                    # if known_mixup is not None:
+                    #     known_mixup = score_calculator.post_transform(known_mixup)
+                    # if unknown_mixup is not None:
+                    #     unknown_mixup = score_calculator.post_transform(unknown_mixup)
 
                     if args.log_interval is not None and i % args.log_interval == 0:
                         if args.ref_mode == 'oracle':

@@ -1,5 +1,6 @@
 from typing import (
     Optional,
+    Callable,
 )
 
 import torch
@@ -18,7 +19,14 @@ class InterpolationMixup(BaseMixupOperator):
         oracle: Optional[torch.FloatTensor] = None,
         targets: torch.FloatTensor = None, 
         seed: Optional[int] = None,
+        pre_transform: Optional[Callable] = None,
+        post_transform: Optional[Callable] = None,
     ):
+        if getattr(self, 'pre_transform', None) is not None:
+            oracle = self.pre_transform(oracle) if oracle is not None else oracle
+            references = self.pre_transform(references) if references is not None else references
+            targets = self.pre_transform(targets) if targets is not None else targets
+
         if oracle is not None:
             if oracle.dim() == 5:
                 oracle_mixup_list = []
@@ -32,12 +40,16 @@ class InterpolationMixup(BaseMixupOperator):
                 oracle_mixup = self._mixup(
                     oracle, references, rates,
                 )
+            if getattr(self, 'post_transform', None) is not None:
+                oracle_mixup = self.post_transform(oracle_mixup)
 
             if targets is None:
                 return oracle_mixup
         
         if targets is not None:
             target_mixup = self._mixup(targets, references, rates)
+            if getattr(self, 'post_transform', None) is not None:
+                target_mixup = self.post_transform(target_mixup)
 
             if oracle is None:
                 return target_mixup

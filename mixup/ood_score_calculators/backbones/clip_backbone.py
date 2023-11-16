@@ -19,23 +19,14 @@ from ...mixup_operators.base_mixup_operator import BaseMixupOperator
 
 
 class ClipBackbone(BaseBackbone):
-    def __init__(self, post_transform: bool = False) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        if post_transform:
-            self.transform_fn = Compose([
-                Resize(224, interpolation=Image.BICUBIC),
-                CenterCrop(224),
-                ToTensor(),
-            ])
-            self.post_transform_fn = Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-        else:
-            self.transform_fn = Compose([
-                Resize(224, interpolation=Image.BICUBIC),
-                CenterCrop(224),
-                ToTensor(),
-                Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-            ])
-            self.post_transform_fn = lambda x: x
+        self.transform_fn = Compose([
+            Resize(224, interpolation=Image.BICUBIC),
+            CenterCrop(224),
+            ToTensor(),
+        ])
+        self.post_transform_fn = Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
 
     def load_model(self, backbone_name, device):
         self.clip_model, _ = clip.load(
