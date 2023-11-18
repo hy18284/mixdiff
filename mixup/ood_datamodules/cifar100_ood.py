@@ -36,8 +36,14 @@ class CIFAR100Wrapper(CIFAR100):
 
 
 class CIFAR100OODDataset(BaseOODDataModule):
-    def __init__(self, max_split: Optional[int] = None, with_replacement: bool = True):
+    def __init__(
+            self,
+            max_split: Optional[int] = None, 
+            with_replacement: bool = True,
+            drop_last: bool = False,
+        ):
         self.with_replacement = with_replacement
+        self.drop_last = drop_last
         self.splits = [
             list(range(20)), 
             list(range(20, 40)), 
@@ -73,6 +79,7 @@ class CIFAR100OODDataset(BaseOODDataModule):
             batch_size=batch_size, 
             num_workers=2, 
             shuffle=shuffle,
+            drop_last=self.drop_last,
         )
 
         for i in range(len(self.splits)):
@@ -152,6 +159,7 @@ class CIFAR100OODDataset(BaseOODDataModule):
             batch_size=batch_size, 
             num_workers=2, 
             shuffle=shuffle,
+            drop_last=self.drop_last,
         )
         return loader
     
