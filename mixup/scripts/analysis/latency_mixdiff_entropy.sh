@@ -18,9 +18,9 @@ do
                         do
                             for m in 15
                             do
-                                for r in 1 2 3 4 5 6 7
+                                for r in 7 6 5 4 3 2 1
                                 do
-                                for batch_size in 1 10 100 1000 10000 100000
+                                for batch_size in 10000 1000 100 10 1
                                 do
                                         if [ "$method" = "MixDiffEnergy" ] || [ "$method" = "MixDiffMaxLogitScore" ] && [ "$intermediate_state" = "softmax" ]; then
                                             echo "Skipping ${method} ${intermediate_state}"
@@ -35,7 +35,7 @@ do
                                             --r_ref 0 \
                                             --seed 0 \
                                             --wandb_name latency_bs$batch_size \
-                                            --wandb_project ZOC_debug \
+                                            --wandb_project ZOC \
                                             --wandb_tags latency \
                                             --device 0 \
                                             --ref_mode $ref_mode \
@@ -56,7 +56,6 @@ do
                                             --fpr_at 0.95 \
                                             --log_interval null \
                                             --datamodule.class_path mixup.ood_datamodules.$dataset \
-                                            --datamodule.init_args.max_split 1 \
                                             --mixup_operator.class_path mixup.mixup_operators.InterpolationMixup
                                 done
                             done
