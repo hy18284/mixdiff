@@ -16,10 +16,11 @@ from .base_backbone import BaseBackbone
 import clip
 from clip.simple_tokenizer import SimpleTokenizer as clip_tokenizer
 from ...mixup_operators.base_mixup_operator import BaseMixupOperator
+from .ash import apply_ash
 
 
-class ClipBackbone(BaseBackbone):
-    def __init__(self) -> None:
+class ClipBackboneASH(BaseBackbone):
+    def __init__(self, ash_method: str) -> None:
         super().__init__()
         self.transform_fn = Compose([
             Resize(224, interpolation=Image.BICUBIC),
@@ -27,6 +28,7 @@ class ClipBackbone(BaseBackbone):
             ToTensor(),
         ])
         self.post_transform_fn = Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
+        self.ash_method = ash_method
 
     def load_model(self, backbone_name, device):
         self.clip_model, _ = clip.load(
@@ -68,6 +70,8 @@ class ClipBackbone(BaseBackbone):
         return_embeds: bool = False,
     ):
         image_embeds = self.clip_model.encode_image(images)
+        image_embeds = apply_ash(image_embeds[:, :, None, None], method=getattr(self, 'ash_method'))
+        image_embeds = image_embeds.squeeze(-1).squeeze(-1)
         image_embeds = image_embeds / torch.norm(image_embeds, dim=-1, keepdim=True)
         logit_scale = self.clip_model.logit_scale.exp()
         logits = logit_scale * image_embeds @ self.prompts_embeds.t()

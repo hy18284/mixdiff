@@ -16,7 +16,7 @@ class MixDiffEnergy(
         known_logits,
         unknown_logits,
     ):
-        logit_scale = self.clip_model.logit_scale.exp().float()
+        logit_scale = self.backbone.clip_model.logit_scale.exp().float()
         known_logits = known_logits.float()
         unknown_logits = unknown_logits.float()
         known_neg_energy = torch.logsumexp(known_logits, dim=-1) / logit_scale
@@ -31,7 +31,7 @@ class MixDiffEnergy(
         **kwargs,
     ):
         if self.add_base_score:
-            logit_scale = self.clip_model.logit_scale.exp().float()
+            logit_scale = self.backbone.clip_model.logit_scale.exp().float()
             logits = logits.float()
             neg_energy = torch.logsumexp(logits, dim=-1) / logit_scale
         else:
