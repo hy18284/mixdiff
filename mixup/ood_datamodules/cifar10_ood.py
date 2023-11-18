@@ -55,14 +55,6 @@ class CIFAR10OODDataset(BaseOODDataModule):
         ]
         self.num_known = 6
 
-        self.cifar10 = CIFAR10Wrapper(
-            root='./data', 
-            train=False, 
-            download=True, 
-            # clip_transform=transform,
-        )
-        self.cifar10_loaders_train = cifar10_single_isolated_class_loader(train=True)
-
         # train_transform = Compose([
         #     ToPILImage(),
         #     Resize(224, interpolation=Image.BICUBIC),
@@ -70,10 +62,6 @@ class CIFAR10OODDataset(BaseOODDataModule):
         #     ToTensor(),
         #     # Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
         # ])
-
-        if train_transform is not None:
-            for loader in self.cifar10_loaders_train.values():
-                loader.dataset.transform = train_transform
 
     def get_splits(
         self, 
@@ -85,6 +73,20 @@ class CIFAR10OODDataset(BaseOODDataModule):
         transform: Optional[Callable] = None,
         n_few_shot_samples: Optional[int] = None,
     ):
+        self.cifar10 = CIFAR10(
+            root='./data', 
+            train=False, 
+            download=True, 
+            transform=transform,
+        )
+        self.cifar10_loaders_train = cifar10_single_isolated_class_loader(
+            train=True,
+            transform=transform,
+        )
+        # if transform is not None:
+        #     for loader in self.cifar10_loaders_train.values():
+        #         loader.dataset.transform = transform
+
         loader = DataLoader(
             self.cifar10, 
             batch_size=batch_size, 

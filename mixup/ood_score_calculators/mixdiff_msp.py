@@ -47,3 +47,19 @@ class MixDiffMaxSofmaxProb(
         else:
             raise ValueError()
         return probs
+
+    @torch.no_grad()
+    def process_images(
+        self,
+        images,
+    ):
+        kwargs = super().process_images(images)
+        probs = self._process_logits(kwargs['logits']) 
+        # (N, NC) -> (N)
+        max_probs, _ = torch.max(probs, dim=-1)
+        scale = max_probs / (1 - 1 / probs.size(1))
+        kwargs['scale'] = scale
+        # print('scale', scale)
+        # print('probs', probs)
+        return kwargs
+        

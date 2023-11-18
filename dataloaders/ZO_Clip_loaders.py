@@ -9,16 +9,17 @@ import glob
 
 
 class cifar10_isolated_class(Dataset):
-    def __init__(self, class_label=None, train=False):
+    def __init__(self, class_label=None, train=False, transform=lambda x: x):
         assert class_label, 'a semantic label should be specified'
         super(cifar10_isolated_class, self).__init__()
-        self.transform = Compose([
-            ToPILImage(),
-            Resize(224, interpolation=Image.BICUBIC),
-            CenterCrop(224),
-            ToTensor(),
-            Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-        ])
+        # self.transform = Compose([
+        #     ToPILImage(),
+        #     Resize(224, interpolation=Image.BICUBIC),
+        #     CenterCrop(224),
+        #     ToTensor(),
+        #     Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
+        # ])
+        self.transform = transform
         cifar10 = CIFAR10(root='./data', train=train, download=True)
 
         class_mask = np.array(cifar10.targets) == cifar10.class_to_idx[class_label]
@@ -29,10 +30,11 @@ class cifar10_isolated_class(Dataset):
         return len(self.data)
 
     def __getitem__(self, index):
-        return self.transform(self.data[index])
+        to_pil = ToPILImage()
+        return self.transform(to_pil(self.data[index]))
 
 
-def cifar10_single_isolated_class_loader(train=False):
+def cifar10_single_isolated_class_loader(train=False, transform = lambda x: x):
     splits = [[0, 1, 9, 7, 3, 2],
               [0, 2, 4, 3, 7, 5],
               [5, 1, 9, 8, 7, 0],
@@ -42,14 +44,14 @@ def cifar10_single_isolated_class_loader(train=False):
     cifar10_labels = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
     #cifar10_labels = ['automobile', 'ship']
     for label in cifar10_labels:
-       dataset = cifar10_isolated_class(label, train=False)
+       dataset = cifar10_isolated_class(label, train=False, transform=transform)
        loader = DataLoader(dataset=dataset, batch_size=1, num_workers=4)
        loaders_dict[label] = loader
     return loaders_dict
 
 
 class cifar100_isolated_class(Dataset):
-    def __init__(self, class_label=None, train=False):
+    def __init__(self, class_label=None, train=False, transform=lambda x: x):
         assert class_label, 'a semantic label should be specified'
         super(cifar100_isolated_class, self).__init__()
         superclass_list =  [['aquatic mammals',	'beaver', 'dolphin', 'otter', 'seal', 'whale'],
@@ -78,14 +80,15 @@ class cifar100_isolated_class(Dataset):
         self.fine_label = class_label
         self.coarse_label = fine_to_coarse_dict[class_label]
 
-        self.transform = Compose([
-            ToPILImage(),
-            Resize(224, interpolation=Image.BICUBIC),
-            CenterCrop(224),
-            ToTensor(),
-            Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-        ])
-        cifar100 = CIFAR100(root='./data', train=train, download=True)
+        self.transform = transform
+        # Compose([
+        #     ToPILImage(),
+        #     Resize(224, interpolation=Image.BICUBIC),
+        #     CenterCrop(224),
+        #     ToTensor(),
+        #     Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
+        # ])
+        cifar100 = CIFAR100(root='./data', train=train, download=True, transform=transform)
 
         self.coarse_label = fine_to_coarse_dict[class_label]
 
@@ -97,10 +100,12 @@ class cifar100_isolated_class(Dataset):
         return len(self.data)
 
     def __getitem__(self, index):
-        return self.transform(self.data[index])
+        to_pil = ToPILImage()
+        return self.transform(to_pil(self.data[index]))
+        # return self.data[index]
 
 
-def cifar100_single_isolated_class_loader(train: bool = False):
+def cifar100_single_isolated_class_loader(train: bool = False, transform = lambda x: x):
     loaders_dict = {}
     cifar100_labels = ['beaver', 'dolphin', 'otter', 'seal', 'whale',
                            'aquarium_fish', 'flatfish', 'ray', 'shark', 'trout',
@@ -123,21 +128,22 @@ def cifar100_single_isolated_class_loader(train: bool = False):
                            'bicycle', 'bus', 'motorcycle', 'pickup_truck', 'train',
                            'lawn_mower', 'rocket', 'streetcar', 'tank', 'tractor']
     for label in cifar100_labels:
-       dataset = cifar100_isolated_class(label, train)
+       dataset = cifar100_isolated_class(label, train, transform)
        loader = DataLoader(dataset=dataset, batch_size=1, num_workers=4)
        loaders_dict[label] = loader
     return loaders_dict
 
 
 class cifarplus():
-    def __init__(self, class_list):
+    def __init__(self, class_list, transform=lambda x: x):
         self.class_list = class_list
-        self.transform = Compose([
-            Resize(224, interpolation=Image.BICUBIC),  # 224 for vit, 288 for res50x4
-            CenterCrop(224),  # 224 for vit, 288 for res50x4
-            ToTensor(),
-            Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-        ])
+        # self.transform = Compose([
+        #     Resize(224, interpolation=Image.BICUBIC),  # 224 for vit, 288 for res50x4
+        #     CenterCrop(224),  # 224 for vit, 288 for res50x4
+        #     ToTensor(),
+        #     Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
+        # ])
+        self.transform = transform
 
         if len(self.class_list) == 4:
            cifar10 = CIFAR10(root='./data', train=False, download=True, transform=self.transform)
@@ -158,7 +164,7 @@ class cifarplus():
         return img, self.targets[index]
 
 
-def cifarplus_loader():
+def cifarplus_loader(transform=lambda x: x):
     in_list = [0, 1, 8, 9]
     out_dict = {'plus50': [4, 30, 55, 72, 95, 1, 32, 67, 73, 91, 6, 7, 14, 18, 24, 3, 42, 43, 88, 97, 15, 19, 21, 31, 38,
                        34, 63, 64, 66, 75, 26, 45, 77, 79, 99, 2, 11, 35, 46, 98, 27, 29, 44, 78, 93, 36, 50, 65, 74, 80],
@@ -168,11 +174,11 @@ def cifarplus_loader():
                        'plus10-4':[95, 93, 26, 43, 36, 27, 18, 30, 64, 32],
                        'plus10-5':[88, 18, 19, 24, 65, 50, 4, 93, 35, 46]}
 
-    in_dataset = cifarplus(in_list)
+    in_dataset = cifarplus(in_list, transform=transform)
     in_loader = DataLoader(dataset=in_dataset, batch_size=1, num_workers=4, shuffle=False)
     out_loaders = {}
     for key in out_dict.keys():
-        out_dataset = cifarplus(out_dict[key])
+        out_dataset = cifarplus(out_dict[key], transform=transform)
         out_loaders[key] = DataLoader(dataset=out_dataset, batch_size=1, num_workers=4, shuffle=False)
     return in_loader, out_loaders
 
@@ -209,7 +215,7 @@ def tinyimage_semantic_spit_generator():
 
 
 class tinyimage_isolated_class(Dataset):
-    def __init__(self, label, mappings, train: bool = False):
+    def __init__(self, label, mappings, train: bool = False, transform = lambda x: x):
         assert label, 'a semantic label should be specified'
         super(tinyimage_isolated_class, self).__init__()
         if train:
@@ -218,12 +224,7 @@ class tinyimage_isolated_class(Dataset):
             path = './data/tiny-imagenet-200/val/'
         #path = '/Users/Sepid/data/tiny-imagenet-200/val/'
         self.image_paths = glob.glob(os.path.join(path, mappings[label], '*.JPEG'))
-        self.transform = Compose([
-            Resize(224, interpolation=Image.BICUBIC),
-            CenterCrop(224),
-            ToTensor(),
-            Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-        ])
+        self.transform = transform
 
     def __len__(self):
         return len(self.image_paths)
@@ -235,7 +236,7 @@ class tinyimage_isolated_class(Dataset):
         return x
 
 
-def tinyimage_single_isolated_class_loader(train: bool = False):
+def tinyimage_single_isolated_class_loader(train: bool = False, transform = lambda x: x):
     semantic_splits = tinyimage_semantic_spit_generator()
     f = open('./dataloaders/tinyimagenet_labels_to_ids.txt', 'r')
     #f = open('../tinyimagenet_ids_to_label.txt', 'r')
@@ -250,7 +251,8 @@ def tinyimage_single_isolated_class_loader(train: bool = False):
         dataset = tinyimage_isolated_class(
             semantic_label, 
             mappings_dict, 
-            train=train
+            train=train,
+            transform=transform,
         )
         loader = DataLoader(dataset=dataset, batch_size=1, num_workers=4)
         loaders_dict[semantic_label] = loader

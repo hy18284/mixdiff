@@ -30,13 +30,6 @@ class CIFARPlus(Dataset):
         super().__init__()
         self.in_dataset = in_dataset
         self.out_dataset = out_dataset
-        self.transform = Compose([
-            ToPILImage(),
-            Resize(224, interpolation=Image.BICUBIC),
-            CenterCrop(224),
-            ToTensor(),
-            Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-        ])
     
     def __len__(self):
         return len(self.in_dataset) + len(self.out_dataset)
@@ -52,14 +45,16 @@ class CIFARPlus(Dataset):
 
 
 class PartialCIFAR10:
-    def __init__(self, class_idx):
-        self.transform = Compose([
-            ToPILImage(),
-            Resize(224, interpolation=Image.BICUBIC),
-            CenterCrop(224),
-            ToTensor(),
-            Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-        ])
+    def __init__(self, class_idx, transform = lambda x: x):
+        # self.transform = Compose([
+        #     ToPILImage(),
+        #     Resize(224, interpolation=Image.BICUBIC),
+        #     CenterCrop(224),
+        #     ToTensor(),
+        #     Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
+        # ])
+        self.to_pil = ToPILImage()
+        self.transform = transform
         cifar10 = CIFAR10(root='./data', train=True, download=True)
         inds = [
             i for i in range(len(cifar10.targets)) 
@@ -69,7 +64,7 @@ class PartialCIFAR10:
         self.targets = np.array(cifar10.targets)[inds].tolist()
 
     def __getitem__(self, idx):
-        return self.transform(self.data[idx])
+        return self.transform(self.to_pil(self.data[idx]))
     
     def __len__(self):
         return len(self.data)
@@ -78,16 +73,7 @@ class PartialCIFAR10:
 class CIFARPlus10OODDataset(BaseOODDataModule):
     def __init__(self, ):
         self.seen_class_names = ['airplane', 'automobile', 'ship', 'truck']
-        in_loader, out_loaders = cifarplus_loader()
-        self.in_dataset = in_loader.dataset
-        self.out_datasets = [
-            loader.dataset for key, loader in out_loaders.items() if 'plus10' in key
-        ]
         self.seen_class_idx = torch.tensor([0, 1, 8, 9])
-        self.partial_cifar10_train = {
-            seen_class_idx: PartialCIFAR10(seen_class_idx) 
-            for seen_class_idx in self.seen_class_idx.tolist()
-        }
         self.cur_loader_idx = 0
 
     def get_splits(
@@ -100,6 +86,17 @@ class CIFARPlus10OODDataset(BaseOODDataModule):
         transform: Optional[Callable] = None,
         n_few_shot_samples: Optional[int] = None,
     ):
+        in_loader, out_loaders = cifarplus_loader(transform)
+        self.in_dataset = in_loader.dataset
+        self.out_datasets = [
+            loader.dataset for key, loader in out_loaders.items() if 'plus10' in key
+        ]
+
+        self.partial_cifar10_train = {
+            seen_class_idx: PartialCIFAR10(seen_class_idx, transform) 
+            for seen_class_idx in self.seen_class_idx.tolist()
+        }
+
         for i, _ in enumerate(range(len(self.out_datasets))):
             cifar_plus_10 = CIFARPlus(
                 self.in_dataset,

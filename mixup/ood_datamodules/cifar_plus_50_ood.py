@@ -20,14 +20,7 @@ from .cifar_plus_10_ood import (
 class CIFARPlus50OODDataset(BaseOODDataModule):
     def __init__(self):
         self.seen_class_names = ['airplane', 'automobile', 'ship', 'truck']
-        in_loader, out_loaders = cifarplus_loader()
-        self.in_dataset = in_loader.dataset
-        self.out_datasets = [out_loaders['plus50'].dataset]
         self.seen_class_idx = torch.tensor([0, 1, 8, 9])
-        self.partial_cifar10_train = {
-            seen_class_idx: PartialCIFAR10(seen_class_idx) 
-            for seen_class_idx in self.seen_class_idx.tolist()
-        }
         self.cur_loader_idx = 0
 
     def get_splits(
@@ -40,6 +33,14 @@ class CIFARPlus50OODDataset(BaseOODDataModule):
         transform: Optional[Callable] = None,
         n_few_shot_samples: Optional[int] = None,
     ):
+        in_loader, out_loaders = cifarplus_loader(transform)
+        self.in_dataset = in_loader.dataset
+        self.out_datasets = [out_loaders['plus50'].dataset]
+        self.partial_cifar10_train = {
+            seen_class_idx: PartialCIFAR10(seen_class_idx, transform) 
+            for seen_class_idx in self.seen_class_idx.tolist()
+        }
+
         for i, _ in enumerate(range(len(self.out_datasets))):
             cifar_plus_100 = CIFARPlus(
                 self.in_dataset,

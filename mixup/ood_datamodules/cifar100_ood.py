@@ -38,7 +38,6 @@ class CIFAR100Wrapper(CIFAR100):
 class CIFAR100OODDataset(BaseOODDataModule):
     def __init__(self, max_split: Optional[int] = None, with_replacement: bool = True):
         self.with_replacement = with_replacement
-        self.cifar100_loaders_train = cifar100_single_isolated_class_loader(train=True)
         self.splits = [
             list(range(20)), 
             list(range(20, 40)), 
@@ -58,6 +57,10 @@ class CIFAR100OODDataset(BaseOODDataModule):
         transform: Optional[Callable] = None,
         n_few_shot_samples: Optional[int] = None,
     ):
+        self.cifar100_loaders_train = cifar100_single_isolated_class_loader(
+            train=True,
+            transform=transform,
+        )
         self.cifar100 = CIFAR100(
             root='./data', 
             train=False, 

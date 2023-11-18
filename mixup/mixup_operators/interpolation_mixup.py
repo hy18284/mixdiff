@@ -19,8 +19,6 @@ class InterpolationMixup(BaseMixupOperator):
         oracle: Optional[torch.FloatTensor] = None,
         targets: torch.FloatTensor = None, 
         seed: Optional[int] = None,
-        pre_transform: Optional[Callable] = None,
-        post_transform: Optional[Callable] = None,
     ):
         if getattr(self, 'pre_transform', None) is not None:
             oracle = self.pre_transform(oracle) if oracle is not None else oracle

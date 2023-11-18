@@ -27,23 +27,11 @@ from .base_ood_datamodule import BaseOODDataModule
 
 class TinyImageNetOODDataset(BaseOODDataModule):
     def __init__(self, ):
-        self.tiny_imagenet = ImageFolder(
-            root='./data/tiny-imagenet-200/val',
-            transform=Compose([
-                Resize(224, interpolation=Image.BICUBIC),
-                CenterCrop(224),
-                ToTensor(),
-                Normalize((0.4913, 0.4821, 0.4465), (0.2470, 0.2434, 0.2615))
-            ]),
-        )
         self.class2dir = {}
         with open('dataloaders/tinyimagenet_labels_to_ids.txt') as f:
             for line in f:
                 class_name, dir_name = line.strip().split()
                 self.class2dir[class_name] = dir_name
-
-        self.class_names, self.loaders_train = tinyimage_single_isolated_class_loader(train=True)
-        print(self.class_names)
 
     def get_splits(
         self, 
@@ -55,12 +43,23 @@ class TinyImageNetOODDataset(BaseOODDataModule):
         transform: Optional[Callable] = None,
         n_few_shot_samples: Optional[int] = None,
     ):
+        self.tiny_imagenet = ImageFolder(
+            root='./data/tiny-imagenet-200/val',
+            transform=transform,
+        )
+        self.class_names, self.loaders_train = tinyimage_single_isolated_class_loader(
+            train=True, 
+            transform=transform,
+        )
+        print(self.class_names)
+
         loader = DataLoader(
             self.tiny_imagenet, 
             batch_size=batch_size, 
-            num_workers=2, 
+            num_workers=2,
             shuffle=shuffle,
         )
+
         for i in range(len(self.class_names)):
             seen_class_names = self.get_seen_class_names(i)
             id_imgs_per_class = self.sample_given_images(

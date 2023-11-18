@@ -48,6 +48,7 @@ def parse_args():
     parser.add_argument('--abs', action='store_true')
     parser.add_argument('--top_1', action='store_true')
     parser.add_argument('--gamma', type=float, default=1.0)
+    parser.add_argument('--scale_mixdiff', type=bool, default=False)
     parser.add_argument('--max_samples', type=Optional[int], default=None, required=False)
     parser.add_argument('--model_path', type=str)
     parser.add_argument('--ref_mode', type=str, default='in_batch')
@@ -441,9 +442,13 @@ if __name__ == '__main__':
                 base_scores = score_calculator.calculate_base_scores(**image_kwargs)
 
                 if score_calculator.utilize_mixup:
-                    mixdiff_scores_log += (args.gamma * dists).tolist()[:orig_n_samples]
+                    mixdiff_scale = args.gamma
+                    if 'scale' in image_kwargs and args.scale_mixdiff:
+                        mixdiff_scale = image_kwargs['scale'] * mixdiff_scale
+
+                    mixdiff_scores_log += (mixdiff_scale * dists).tolist()[:orig_n_samples]
                     base_scores_log += base_scores.tolist()[:orig_n_samples]
-                    dists = base_scores + args.gamma * dists
+                    dists = base_scores + mixdiff_scale * dists
                 else:
                     dists = base_scores
                 
