@@ -203,6 +203,11 @@ if __name__ == '__main__':
     base_scores_log_all = [] 
     mixdiff_scores_log_all = []
     targets_all = []
+     
+    latencies_per_sample = []
+    starter = torch.cuda.Event(enable_timing=True)
+    ender = torch.cuda.Event(enable_timing=True)
+    total_n_samples = 0
 
     for outer_iter, seed in enumerate(seeds):
         for inner_iter, (
@@ -263,6 +268,8 @@ if __name__ == '__main__':
             cur_num_samples = 0
 
             for i, (images, labels) in enumerate(tqdm(loader)):
+                starter.record()
+
                 orig_n_samples = len(images)
                 if len(images) != batch_size and score_calculator.utilize_mixup:
                     if torch.is_tensor(images):
@@ -458,6 +465,13 @@ if __name__ == '__main__':
                 scores += dists.tolist()
 
                 cur_num_samples += N
+
+                ender.record()
+                torch.cuda.synchronize()
+                latency = starter.elapsed_time(ender)
+                latencies_per_sample.append(latency)
+                total_n_samples += len(images)
+
                 if args.max_samples is not None and cur_num_samples >= args.max_samples:
                     break
                 
@@ -522,6 +536,9 @@ if __name__ == '__main__':
     auroc_std = np.std(aurocs)
     print('avg', avg_auroc, 'std', auroc_std)
 
+    latency_per_sample = np.mean(latencies_per_sample)
+    latency_per_sample_std = np.std(latencies_per_sample)
+
     wandb.log({
         'avg_auroc': avg_auroc, 
         'auroc_std': auroc_std,
@@ -529,4 +546,6 @@ if __name__ == '__main__':
         f'fpr{round(args.fpr_at * 100)}_std': np.std(fprs),
         f'avg_fnr{round(args.fnr_at * 100)}': np.mean(fnrs), 
         f'fnr{round(args.fnr_at * 100)}_std': np.std(fnrs),
+        f'avg_latency_per_sample': np.sum(latencies_per_sample) / total_n_samples,
+        f'latency_per_sample_std': np.std(latencies_per_sample),
     })
