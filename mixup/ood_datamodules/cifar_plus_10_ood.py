@@ -71,7 +71,11 @@ class PartialCIFAR10:
 
 
 class CIFARPlus10OODDataset(BaseOODDataModule):
-    def __init__(self, ):
+    def __init__(
+        self, 
+        drop_last: bool = False,
+    ):
+        self.drop_last = drop_last
         self.seen_class_names = ['airplane', 'automobile', 'ship', 'truck']
         self.seen_class_idx = torch.tensor([0, 1, 8, 9])
         self.cur_loader_idx = 0

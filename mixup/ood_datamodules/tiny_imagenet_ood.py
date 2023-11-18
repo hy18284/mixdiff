@@ -26,7 +26,11 @@ from .base_ood_datamodule import BaseOODDataModule
 
 
 class TinyImageNetOODDataset(BaseOODDataModule):
-    def __init__(self, ):
+    def __init__(
+        self, 
+        drop_last: bool = False,
+    ):
+        self.drop_last = drop_last
         self.class2dir = {}
         with open('dataloaders/tinyimagenet_labels_to_ids.txt') as f:
             for line in f:
@@ -58,6 +62,7 @@ class TinyImageNetOODDataset(BaseOODDataModule):
             batch_size=batch_size, 
             num_workers=2,
             shuffle=shuffle,
+            drop_last=self.drop_last,
         )
 
         for i in range(len(self.class_names)):
@@ -119,6 +124,7 @@ class TinyImageNetOODDataset(BaseOODDataModule):
             batch_size=batch_size, 
             num_workers=2, 
             shuffle=shuffle,
+            drop_last=self.drop_last,
         )
         return loader
     

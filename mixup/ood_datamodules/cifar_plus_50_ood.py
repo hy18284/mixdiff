@@ -18,7 +18,11 @@ from .cifar_plus_10_ood import (
     
 
 class CIFARPlus50OODDataset(BaseOODDataModule):
-    def __init__(self):
+    def __init__(
+        self,
+        drop_last: bool = False,
+    ):
+        self.drop_last = drop_last
         self.seen_class_names = ['airplane', 'automobile', 'ship', 'truck']
         self.seen_class_idx = torch.tensor([0, 1, 8, 9])
         self.cur_loader_idx = 0
@@ -50,7 +54,8 @@ class CIFARPlus50OODDataset(BaseOODDataModule):
                 cifar_plus_100, 
                 batch_size=batch_size, 
                 num_workers=2, 
-                shuffle=shuffle
+                shuffle=shuffle,
+                drop_last=self.drop_last,
             )
 
             id_imgs_per_class = self.sample_given_images(
@@ -111,7 +116,8 @@ class CIFARPlus50OODDataset(BaseOODDataModule):
             cifar_plus_100, 
             batch_size=batch_size, 
             num_workers=2, 
-            shuffle=shuffle
+            shuffle=shuffle,
+            drop_last=self.drop_last,
         )
         self.cur_loader_idx += 1
         return loader
