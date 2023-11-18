@@ -45,7 +45,9 @@ class CIFAR10OODDataset(BaseOODDataModule):
         self, 
         transform: Optional[Callable] = None,
         train_transform: Optional[Callable] = None,
+        drop_last: bool = False,
     ):
+        self.drop_last = drop_last
         self.splits = [
             ['airplane', 'automobile', 'bird', 'deer', 'dog', 'truck', 'cat', 'frog', 'horse', 'ship'],
             ['airplane', 'cat', 'dog', 'horse', 'ship', 'truck', 'automobile', 'bird', 'deer', 'frog'],
@@ -91,7 +93,8 @@ class CIFAR10OODDataset(BaseOODDataModule):
             self.cifar10, 
             batch_size=batch_size, 
             num_workers=2, 
-            shuffle=shuffle
+            shuffle=shuffle,
+            drop_last=self.drop_last,
         )
         for i in range(len(self.splits)):
             seen_class_names = self.get_seen_class_names(i)
@@ -151,7 +154,8 @@ class CIFAR10OODDataset(BaseOODDataModule):
             self.cifar10, 
             batch_size=batch_size, 
             num_workers=2, 
-            shuffle=shuffle
+            shuffle=shuffle,
+            drop_last=self.drop_last,
         )
         return loader
     
