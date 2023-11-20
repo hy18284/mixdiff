@@ -16,7 +16,7 @@ do
                     do
                         for p in 3
                         do
-                            for m in 15
+                            for m in 15 10
                             do
                                 for r in 7 5
                                 do
