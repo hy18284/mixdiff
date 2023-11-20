@@ -148,9 +148,13 @@ class Caltech101OODDataset(BaseOODDataModule):
             seen_class_idx = [self.class2idx[name] for name in seen_class_names]
             seen_class_idx = torch.tensor(seen_class_idx)
 
+            if self.with_replacement:
+                additional_samples = n_samples_per_class
+            else:
+                additional_samples = math.ceil(n_ref_samples / len(seen_class_names))
             id_imgs_per_class = self.sample_given_images(
                 seen_class_names=seen_class_names,
-                n_samples_per_class=n_samples_per_class + math.ceil(n_ref_samples / len(seen_class_names)),
+                n_samples_per_class=n_samples_per_class + additional_samples,
                 seed=seed,
             )
 
