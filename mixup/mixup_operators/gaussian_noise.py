@@ -30,7 +30,7 @@ class GaussianNoise(BaseMixupOperator):
         P, C, H, W = references.size()
 
         # (P, R, C, H, W)
-        stds = torch.tensor(self.stds).to(references.device) ** 0.5
+        stds = torch.tensor(self.stds).to(references.device)
         stds = stds[None, :, None, None, None].expand(P, -1, C, H, W)
         generator = torch.Generator(device=references.device)
         generator = generator.manual_seed(seed)
