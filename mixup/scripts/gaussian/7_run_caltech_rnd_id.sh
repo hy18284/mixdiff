@@ -50,7 +50,7 @@ do
                                     --log_interval null \
                                     --datamodule.class_path mixup.ood_datamodules.$dataset \
                                     --mixup_operator.class_path mixup.mixup_operators.GaussianNoise \
-                                    --mixup_operator.init_args.vars "[$vars]"
+                                    --mixup_operator.init_args.stds "[$vars]"
                             done
                         done
                     done
