@@ -326,6 +326,7 @@ if __name__ == '__main__':
                             references=images,
                             targets=images,
                             rates=rates,
+                            seed=seed,
                         ) 
                     elif args.ref_mode == 'oracle':
                         # (N), (N, P) -> (N * P * R)
