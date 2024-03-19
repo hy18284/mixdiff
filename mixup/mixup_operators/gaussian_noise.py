@@ -11,8 +11,8 @@ from .base_mixup_operator import BaseMixupOperator
 
 
 class GaussianNoise(BaseMixupOperator):
-    def __init__(self, vars: List[float]):
-        self.vars = vars
+    def __init__(self, stds: List[float]):
+        self.stds = stds
 
     def __call__(
         self, 
@@ -27,21 +27,23 @@ class GaussianNoise(BaseMixupOperator):
             references = self.pre_transform(references) if references is not None else references
             targets = self.pre_transform(targets) if targets is not None else targets
 
-        n_ref = len(references)
+        P, C, H, W = references.size()
 
+        n_ref = len(references)
+        # (P, R, C, H, W)
+        stds = torch.tensor(self.stds).to(references.device)
+        stds = stds[None, :, None, None, None].expand(P, -1, C, H, W)
+        noise = torch.normal(mean=0.0, std=stds)
+        
         if oracle is not None:
             if oracle.dim() == 5:
-                oracle_mixup_list = []
-                for orc in oracle:
-                    oracle_mixup = self._add_noise(
-                        orc, n_ref, seed,
-                    )
-                    oracle_mixup_list.append(oracle_mixup)
-                oracle_mixup = torch.cat(oracle_mixup_list, dim=0)
+                # (B, M, 1, 1, C, H, W) + (1, 1, P, R, C, H, W)
+                oracle_mixup = oracle[:, :, None, None, ...] + noise[None, None, ...]
             else:
-                oracle_mixup = self._mixup(
-                    oracle, references, rates,
-                )
+                # (M, 1, 1, C, H, W) + (1, P, R, C, H, W)
+                oracle_mixup = oracle[:, None, None, ...] + noise[None, ...]
+                oracle_mixup = torch.clamp(oracle_mixup, min=0.0, max=1.0)
+            oracle_mixup = oracle_mixup.reshape(-1, C, H, W)
             if getattr(self, 'post_transform', None) is not None:
                 oracle_mixup = self.post_transform(oracle_mixup)
 
@@ -49,9 +51,12 @@ class GaussianNoise(BaseMixupOperator):
                 return oracle_mixup
         
         if targets is not None:
-            target_mixup = self._add_noise(targets, n_ref, seed)
+            # (B, 1, 1, C, H, W) + (1, P, R, C, H, W)
+            target_mixup = targets[:, None, None, ...] + noise[None, ...]
+            target_mixup = torch.clamp(target_mixup, min=0.0, max=1.0)
             if getattr(self, 'post_transform', None) is not None:
                 target_mixup = self.post_transform(target_mixup)
+            target_mixup = target_mixup.reshape(-1, C, H, W)
 
             if oracle is None:
                 return target_mixup
@@ -66,7 +71,7 @@ class GaussianNoise(BaseMixupOperator):
             diff_refs = []
             for i in range(n_ref):
                 diff_rates = []
-                for var in self.vars:
+                for var in self.stds:
                     noised = random_noise(
                         image=image.cpu(), 
                         mode='gaussian', 
@@ -110,4 +115,4 @@ class GaussianNoise(BaseMixupOperator):
         return known_mixup
     
     def __str__(self):
-        return f'gau_{self.vars}'
+        return f'gau_{self.stds}'
