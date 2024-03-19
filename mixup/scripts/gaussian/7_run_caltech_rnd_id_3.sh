@@ -17,7 +17,7 @@ do
                     do
                         for p in 15 10
                         do
-                            for vars in "0.25, 0.1, 0.05, 0.025, 0.01, 0.005, 0.0025"
+                            for vars in "0.1, 0.05, 0.025, 0.01, 0.005, 0.0025, 0.001"
                             do
                                 if [ "$method" = "MixDiffEnergy" ] || [ "$method" = "MixDiffMaxLogitScore" ] && [ "$intermediate_state" = "softmax" ]; then
                                     echo "Skipping ${method} ${intermediate_state}"
@@ -33,7 +33,7 @@ do
                                     --seed 0 \
                                     --wandb_name '' \
                                     --wandb_project ZOC \
-                                    --wandb_tags gaussian_v2 \
+                                    --wandb_tags gaussian_v3 \
                                     --device 0 \
                                     --ref_mode $ref_mode \
                                     --model_path 'ViT-B/32' \
