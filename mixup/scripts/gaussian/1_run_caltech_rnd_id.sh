@@ -5,19 +5,18 @@ do
     for ref_mode in in_batch
     do
         for method in \
-            MixDiffMaxSofmaxProb \
-            MixDiffEntropy
+            MixDiffMaxSofmaxProb 
         do 
             for dataset in \
                 Caltech101OODDataset
             do
-                for gamma in 2.0 1.0 0.5
+                for gamma in 2.0
                 do
-                    for m in 15 10
+                    for m in 15
                     do
                         for p in 15 10
                         do
-                            for vars in "0.05, 0.025, 0.01, 0.005, 0.001"
+                            for vars in 0.1 0.2 0.5 0.7 1.0 0.05 0.025 0.01 0.005 0.001
                             do
                                 if [ "$method" = "MixDiffEnergy" ] || [ "$method" = "MixDiffMaxLogitScore" ] && [ "$intermediate_state" = "softmax" ]; then
                                     echo "Skipping ${method} ${intermediate_state}"
@@ -26,7 +25,7 @@ do
                                 python -m mixup.mixup_eval_text \
                                     --n 100 \
                                     --m $m \
-                                    --r 5 \
+                                    --r 1 \
                                     --p $p \
                                     --gamma $gamma \
                                     --r_ref 0 \
