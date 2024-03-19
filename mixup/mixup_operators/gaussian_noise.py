@@ -29,11 +29,12 @@ class GaussianNoise(BaseMixupOperator):
 
         P, C, H, W = references.size()
 
-        n_ref = len(references)
         # (P, R, C, H, W)
-        stds = torch.tensor(self.stds).to(references.device)
+        stds = torch.tensor(self.stds).to(references.device) ** 0.5
         stds = stds[None, :, None, None, None].expand(P, -1, C, H, W)
-        noise = torch.normal(mean=0.0, std=stds)
+        generator = torch.Generator(device=references.device)
+        generator = generator.manual_seed(seed)
+        noise = torch.normal(mean=0.0, std=stds, generator=generator)
         
         if oracle is not None:
             if oracle.dim() == 5:
