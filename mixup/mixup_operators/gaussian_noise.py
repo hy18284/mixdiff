@@ -27,12 +27,14 @@ class GaussianNoise(BaseMixupOperator):
             references = self.pre_transform(references) if references is not None else references
             targets = self.pre_transform(targets) if targets is not None else targets
 
+        n_ref = len(references)
+
         if oracle is not None:
             if oracle.dim() == 5:
                 oracle_mixup_list = []
                 for orc in oracle:
                     oracle_mixup = self._add_noise(
-                        orc, seed,
+                        orc, n_ref, seed,
                     )
                     oracle_mixup_list.append(oracle_mixup)
                 oracle_mixup = torch.cat(oracle_mixup_list, dim=0)
@@ -47,7 +49,7 @@ class GaussianNoise(BaseMixupOperator):
                 return oracle_mixup
         
         if targets is not None:
-            target_mixup = self._add_noise(targets, seed)
+            target_mixup = self._add_noise(targets, n_ref, seed)
             if getattr(self, 'post_transform', None) is not None:
                 target_mixup = self.post_transform(target_mixup)
 
@@ -56,25 +58,28 @@ class GaussianNoise(BaseMixupOperator):
             
         return oracle_mixup, target_mixup
     
-    def _add_noise(self, images, seed):
+    def _add_noise(self, images, n_ref, seed):
         M, C, H, W = images.size()
 
         noised_images = []
         for image in images:
-            noised_versions = []
-            for i, var in enumerate(self.vars):
-                noised = random_noise(
-                    image=image.cpu(), 
-                    mode='gaussian', 
-                    rng=seed+i,
-                    clip=True,
-                    mean=0,
-                    var=var,
-                )
-                noised_versions.append(torch.tensor(noised).to(image.device))
-            noised_images.append(torch.stack(noised_versions))
-        # (M, P, C, H, W) -> (M, P, R, C, H, W) -> (M * P * R, C, H, W)
-        noised_images = torch.stack(noised_images).unsqueeze(2).reshape(-1, C, H, W)
+            diff_refs = []
+            for i in range(n_ref):
+                diff_rates = []
+                for var in self.vars:
+                    noised = random_noise(
+                        image=image.cpu(), 
+                        mode='gaussian', 
+                        rng=seed+i,
+                        clip=True,
+                        mean=0,
+                        var=var,
+                    )
+                    diff_rates.append(torch.tensor(noised).to(image.device))
+                diff_refs.append(torch.stack(diff_rates))
+            noised_images.append(torch.stack(diff_refs))
+        # (M, P, R, C, H, W) -> (M * P * R, C, H, W)
+        noised_images = torch.stack(noised_images).view(-1, C, H, W)
         return noised_images
     
     def _mixup(self, images, ref_images, rates):
