@@ -26,7 +26,7 @@ do
                                 python -m mixup.mixup_eval_text \
                                     --n 100 \
                                     --m $m \
-                                    --r 2 \
+                                    --r 7 \
                                     --p $p \
                                     --gamma $gamma \
                                     --r_ref 0 \
