@@ -20,6 +20,7 @@ from torchvision.transforms import (
     Normalize, 
 )
 from PIL import Image
+import numpy as np
 
 from dataloaders.ZO_Clip_loaders import tinyimage_single_isolated_class_loader
 from .base_ood_datamodule import BaseOODDataModule
@@ -84,6 +85,13 @@ class TinyImageNetOODDataset(BaseOODDataModule):
             elif self.ref_mode == 'rand_id':
                 ref_images = torch.cat(ref_images, dim=0)
                 ref_images = random.Random(seed).choices(ref_images, k=n_ref_samples)
+                ref_images = torch.stack(ref_images)
+            elif self.ref_mode == 'single_class':
+                rng = np.random.default_rng(seed)
+                idx = rng.integers(0, len(ref_images))
+                ref_images = ref_images[idx]
+                indices = rng.choice(len(ref_images), n_ref_samples, replace=False)
+                ref_images = [ref_images[idx] for idx in indices]
                 ref_images = torch.stack(ref_images)
             else:
                 raise ValueError()

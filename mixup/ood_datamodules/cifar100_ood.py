@@ -118,6 +118,13 @@ class CIFAR100OODDataset(BaseOODDataModule):
                     ref_images = [ref_images[idx] for idx in ref_images_idx]
 
                 ref_images = torch.stack(ref_images)
+            elif self.ref_mode == 'single_class':
+                rng = np.random.default_rng(seed)
+                idx = rng.integers(0, len(ref_images))
+                ref_images = ref_images[idx]
+                indices = rng.choice(len(ref_images), n_ref_samples, replace=False)
+                ref_images = [ref_images[idx] for idx in indices]
+                ref_images = torch.stack(ref_images)
             else:
                 raise ValueError()
 
