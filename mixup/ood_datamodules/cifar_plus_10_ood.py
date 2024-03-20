@@ -17,6 +17,7 @@ from torchvision.transforms import (
     ToTensor, 
     Normalize, 
     ToPILImage,
+    RandomResizedCrop,
 )
 from PIL import Image
 import numpy as np
@@ -139,6 +140,14 @@ class CIFARPlus10OODDataset(BaseOODDataModule):
                 ref_images = ref_images[idx]
                 indices = rng.choice(len(ref_images), n_ref_samples, replace=False)
                 ref_images = [ref_images[idx] for idx in indices]
+                ref_images = torch.stack(ref_images)
+            elif self.ref_mode == 'single_sample':
+                ref_images = torch.cat(ref_images)
+                rng = np.random.default_rng(seed)
+                idx = rng.integers(0, len(ref_images))
+                ref_image = ref_images[idx]
+                crop = RandomResizedCrop(ref_image.size()[1:])
+                ref_images = [crop(ref_image) for _ in range(n_ref_samples)]
                 ref_images = torch.stack(ref_images)
             else:
                 raise ValueError()

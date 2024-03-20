@@ -13,6 +13,7 @@ from .ood_score_calculator import OODScoreCalculator
 from ..mixup_operators.base_mixup_operator import BaseMixupOperator
 from ..utils import log_mixup_samples
 from .backbones.base_backbone import BaseBackbone
+from ..mixup_eval_text import FIX_REF_MODES
 
 
 class MixDiffLogitBasedMixin(nn.Module):
@@ -84,14 +85,14 @@ class MixDiffLogitBasedMixin(nn.Module):
             self.id_logits = self._process_images(given_images_flat)
 
         self.oracle_logits = [] 
-        if self.ref_mode == 'oracle' or self.ref_mode in ['rand_id', 'single_class']:
+        if self.ref_mode == 'oracle' or self.ref_mode in FIX_REF_MODES:
             for i, given in tqdm(
                 list(enumerate(given_images)),
                 desc='Processing oracle samples'
             ):
                 if self.ref_mode == 'oracle':
                     ref = given
-                elif self.ref_mode in ['rand_id', 'single_class']:
+                elif self.ref_mode in FIX_REF_MODES:
                     ref = ref_images
 
                 mixed = mixup_fn(
@@ -122,7 +123,7 @@ class MixDiffLogitBasedMixin(nn.Module):
 
         self.NC = given_images.size(0)
         self.M = len(given_images[0])
-        if self.ref_mode in ['rand_id', 'single_class']:
+        if self.ref_mode in FIX_REF_MODES:
             self.P = len(ref_images)
         elif self.ref_mode == 'oracle':
             self.P = self.M
@@ -231,7 +232,7 @@ class MixDiffLogitBasedMixin(nn.Module):
         logits,
         **kwrags,
     ):
-        if self.ref_mode == 'oracle' or self.ref_mode in ['rand_id', 'single_class']:
+        if self.ref_mode == 'oracle' or self.ref_mode in FIX_REF_MODES:
             # (N, NC) -> (N)
             max_indices = torch.argmax(logits, dim=-1)
             # (NC, M * P * R, NC) -> (N, M * P * R, NC)
@@ -245,7 +246,7 @@ class MixDiffLogitBasedMixin(nn.Module):
         if self.oracle_sim_mode == 'uniform':
             return mixed_logits
 
-        if self.ref_mode not in ('oracle', 'rand_id', 'single_class'):
+        if self.ref_mode not in ['oracle'] + FIX_REF_MODES:
             raise ValueError('Not yet implemented for other ref_modes')
 
         if self.ref_mode == 'in_batch':

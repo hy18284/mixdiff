@@ -31,6 +31,9 @@ from .utils import (
 from .adversarial.confidence_pgd_attack import ConfidenceLinfPGDAttack
 
 
+FIX_REF_MODES = ['rand_id', 'single_class', 'single_sample']
+
+
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument('--n', type=int, default=10)
@@ -175,6 +178,9 @@ if __name__ == '__main__':
             ref = 'i'
         elif args.ref_mode in 'single_class':
             ref = 's'
+        elif args.ref_mode in 'single_sample':
+            ref = 'ss'
+
 
         name=f'{args.wandb_name}_{score_calculator}_{ref}_{datamodule}_{mixup_fn}'
     else:
@@ -226,7 +232,7 @@ if __name__ == '__main__':
             datamodule.get_splits(
                 n_samples_per_class=M, 
                 seed=seed, 
-                n_ref_samples=P if args.ref_mode in ['rand_id', 'single_class'] else 0,
+                n_ref_samples=P if args.ref_mode in FIX_REF_MODES else 0,
                 batch_size=batch_size,
                 shuffle=True,
                 transform=score_calculator.transform,
@@ -348,7 +354,7 @@ if __name__ == '__main__':
                         if torch.is_tensor(unknown_mixup[0]):
                             unknown_mixup = torch.cat(unknown_mixup, dim=0)
                         known_mixup = None
-                    elif args.ref_mode in ['rand_id', 'single_class']:
+                    elif args.ref_mode in FIX_REF_MODES:
                         # (N), (P) -> (N, P, R)
                         unknown_mixup = []
                         for image in images:
@@ -377,7 +383,7 @@ if __name__ == '__main__':
                             ref_images_log = chosen_images
                         elif args.ref_mode == 'in_batch':
                             ref_images_log = list(itertools.repeat(images, N))
-                        elif args.ref_mode in ['rand_id', 'single_class']:
+                        elif args.ref_mode in FIX_REF_MODES:
                             ref_images_log = list(itertools.repeat(ref_images, P))
 
                         log_mixup_samples(
@@ -402,7 +408,7 @@ if __name__ == '__main__':
                         **image_kwargs
                     )
                     NC = known_logits.size(-1)
-                    if args.ref_mode == 'in_batch' or args.ref_mode in ['rand_id', 'single_class']:
+                    if args.ref_mode == 'in_batch' or args.ref_mode in FIX_REF_MODES:
                         known_logits = known_logits.view(N, M, P, R, -1)
                         known_logits = torch.mean(known_logits, dim=1).view(-1, NC)
                     elif args.ref_mode == 'oracle':
@@ -438,7 +444,7 @@ if __name__ == '__main__':
                     elif args.ref_mode == 'oracle':
                         dists = dists.view(N, M, R)
                         dists = torch.mean(dists, dim=-1)
-                    elif args.ref_mode in ['rand_id', 'single_class']:
+                    elif args.ref_mode in FIX_REF_MODES:
                         dists = dists.view(N, P, R)
                         dists = torch.mean(dists, dim=-1)
 
@@ -449,7 +455,7 @@ if __name__ == '__main__':
                     else:
                         if args.ref_mode == 'in_batch':
                             dists = torch.sum(dists, dim=-1) / torch.sum(mask > 0.5, dim=-1)
-                        elif args.ref_mode == 'oracle' or args.ref_mode in ['rand_id', 'single_class']:
+                        elif args.ref_mode == 'oracle' or args.ref_mode in FIX_REF_MODES:
                             dists = torch.mean(dists, dim=-1)
                 
                 base_scores = score_calculator.calculate_base_scores(**image_kwargs)
