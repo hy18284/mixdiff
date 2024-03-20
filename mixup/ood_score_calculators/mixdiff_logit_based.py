@@ -84,14 +84,14 @@ class MixDiffLogitBasedMixin(nn.Module):
             self.id_logits = self._process_images(given_images_flat)
 
         self.oracle_logits = [] 
-        if self.ref_mode == 'oracle' or self.ref_mode == 'rand_id':
+        if self.ref_mode == 'oracle' or self.ref_mode in ['rand_id', 'single_class']:
             for i, given in tqdm(
                 list(enumerate(given_images)),
                 desc='Processing oracle samples'
             ):
                 if self.ref_mode == 'oracle':
                     ref = given
-                elif self.ref_mode == 'rand_id':
+                elif self.ref_mode in ['rand_id', 'single_class']:
                     ref = ref_images
 
                 mixed = mixup_fn(
@@ -122,7 +122,7 @@ class MixDiffLogitBasedMixin(nn.Module):
 
         self.NC = given_images.size(0)
         self.M = len(given_images[0])
-        if self.ref_mode == 'rand_id':
+        if self.ref_mode in ['rand_id', 'single_class']:
             self.P = len(ref_images)
         elif self.ref_mode == 'oracle':
             self.P = self.M
@@ -231,7 +231,7 @@ class MixDiffLogitBasedMixin(nn.Module):
         logits,
         **kwrags,
     ):
-        if self.ref_mode == 'oracle' or self.ref_mode == 'rand_id':
+        if self.ref_mode == 'oracle' or self.ref_mode in ['rand_id', 'single_class']:
             # (N, NC) -> (N)
             max_indices = torch.argmax(logits, dim=-1)
             # (NC, M * P * R, NC) -> (N, M * P * R, NC)
@@ -245,7 +245,7 @@ class MixDiffLogitBasedMixin(nn.Module):
         if self.oracle_sim_mode == 'uniform':
             return mixed_logits
 
-        if self.ref_mode not in ('oracle', 'rand_id'):
+        if self.ref_mode not in ('oracle', 'rand_id', 'single_class'):
             raise ValueError('Not yet implemented for other ref_modes')
 
         if self.ref_mode == 'in_batch':
