@@ -33,7 +33,7 @@ do
                                     --seed 0 \
                                     --wandb_name '' \
                                     --wandb_project ZOC \
-                                    --wandb_tags gaussian_v6 \
+                                    --wandb_tags gaussian_v7 \
                                     --device 0 \
                                     --ref_mode $ref_mode \
                                     --model_path 'ViT-B/32' \
@@ -49,6 +49,8 @@ do
                                     --fpr_at 0.95 \
                                     --log_interval null \
                                     --datamodule.class_path mixup.ood_datamodules.$dataset \
+                                    --datamodule.init_args.val_ratio 0.66 \
+                                    --datamodule.init_args.with_replacement true  \
                                     --mixup_operator.class_path mixup.mixup_operators.GaussianNoise \
                                     --mixup_operator.init_args.stds "[$vars]"
                             done
