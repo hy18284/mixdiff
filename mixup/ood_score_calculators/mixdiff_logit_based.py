@@ -42,7 +42,7 @@ class MixDiffLogitBasedMixin(nn.Module):
         self.log_interval = log_interval
         self.known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
 
-        assert self.intermediate_state in ('logit', 'softmax', 'one_hot')
+        assert self.intermediate_state in ('logit', 'softmax', 'one_hot', 'embedding')
         assert self.selection_mode in ('argmax', 'dot', 'euclidean', 'kl', 'random')
         assert self.oracle_sim_mode in ('uniform', 'l2', 'dot', 'cosine_sim')
     
@@ -82,6 +82,7 @@ class MixDiffLogitBasedMixin(nn.Module):
             NC, M, C, H, W = given_images.size()
             given_images_flat = given_images.view(-1, C, H, W)
             # (NC * M, NC)
+            given_images_flat = self.post_transform(given_images_flat)
             self.id_logits = self._process_images(given_images_flat)
 
         self.oracle_logits = [] 
@@ -94,6 +95,10 @@ class MixDiffLogitBasedMixin(nn.Module):
                     ref = given
                 elif self.ref_mode in FIX_REF_MODES:
                     ref = ref_images
+                
+                # if self.intermediate_state == 'embedding':
+                #     _, ref, _ = self.backbone.process_images(ref, return_embeds=True)
+                #     _, given, _ = self.backbone.process_images(given, return_embeds=True)
 
                 mixed = mixup_fn(
                     oracle=given, 
@@ -116,6 +121,9 @@ class MixDiffLogitBasedMixin(nn.Module):
                         M=len(given)
                     )
                 # (M * P * R, C, H, W) -> (M * P * R, NC)
+                # if self.intermediate_state == 'embedding':
+                #     logits = self._process_embeds(mixed)
+                # else:
                 logits = self._process_images(mixed)
                 self.oracle_logits.append(logits)
             # [NC, (M * M * R, NC)] -> (NC, M * M * R, NC)
@@ -238,6 +246,9 @@ class MixDiffLogitBasedMixin(nn.Module):
             # (NC, M * P * R, NC) -> (N, M * P * R, NC)
             mixed_logits = self.oracle_logits[max_indices]
         elif self.ref_mode == 'in_batch':
+            # if self.intermediate_state == 'embedding':
+            #     mixed_logits = self._process_embeds(images)
+            # else:
             mixed_logits = self._process_images(images)
         else:
             raise ValueError(f'Invalid ref_mode: {self.ref_mode}')
@@ -245,6 +256,8 @@ class MixDiffLogitBasedMixin(nn.Module):
         N, NC = logits.size()
         if self.oracle_sim_mode == 'uniform':
             return mixed_logits
+        elif self.intermediate_state == 'embedding':
+            raise NotImplementedError()
 
         if self.ref_mode not in ['oracle'] + FIX_REF_MODES:
             raise ValueError('Not yet implemented for other ref_modes')
@@ -296,7 +309,10 @@ class MixDiffLogitBasedMixin(nn.Module):
         images_list = torch.split(images, self.batch_size, dim=0)
         logits_list = []
         for split_images in images_list:
-            split_logits = self.backbone.process_images(split_images)
+            if self.intermediate_state == 'embedding':
+                split_logits = self.backbone.process_embeds(split_images)
+            else:
+                split_logits = self.backbone.process_images(split_images)
             logits_list.append(split_logits) 
         
         logits = torch.cat(logits_list, dim=0).float()
@@ -308,6 +324,16 @@ class MixDiffLogitBasedMixin(nn.Module):
             logits = F.one_hot(logits, num_classes=n_classes)
             logits = logits.to(float)
         return logits
+    
+    def _process_embeds(
+        self,
+        embeds,
+    ):
+        embeds_list = torch.split(embeds, self.batch_size, dim=0)
+        logits_list = []
+        for embeds in embeds_list:
+            split_logits = self.backbone.process_embeds(embeds)
+            logits_list.append(split_logits) 
 
     def __str__(self) -> str:
         if self.selection_mode == 'euclidean':
@@ -327,6 +353,8 @@ class MixDiffLogitBasedMixin(nn.Module):
             inter_state = '_s'
         elif self.intermediate_state == 'one_hot':
             inter_state = '_o'
+        elif self.intermediate_state == 'embedding':
+            inter_state = '_e'
 
         if not self.utilize_mixup:
             return f'{self.name}'
@@ -339,7 +367,12 @@ class MixDiffLogitBasedMixin(nn.Module):
         return self.backbone.transform(images)
 
     def post_transform(self, images):
-        return self.backbone.post_transform(images)
+        if self.intermediate_state == 'embedding':
+            images = self.backbone.post_transform(images)
+            _, images, _ = self.backbone.process_images(images, return_embeds=True)
+            return images
+        else:
+            return self.backbone.post_transform(images)
 
     def forward(self, images):
         images = self.post_transform(images)

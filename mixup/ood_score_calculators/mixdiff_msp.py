@@ -40,7 +40,7 @@ class MixDiffMaxSofmaxProb(
         return -max_probs
     
     def _process_logits(self, logits):
-        if self.intermediate_state == 'logit':
+        if self.intermediate_state in ['logit', 'embedding']:
             probs = torch.softmax(logits, dim=-1)
         elif self.intermediate_state == 'softmax':
             probs = logits

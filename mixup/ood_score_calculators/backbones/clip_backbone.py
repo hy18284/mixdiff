@@ -72,6 +72,18 @@ class ClipBackbone(BaseBackbone):
         logit_scale = self.clip_model.logit_scale.exp()
         logits = logit_scale * image_embeds @ self.prompts_embeds.t()
         if return_embeds:
+            return logits.float(), image_embeds.float(), self.prompts_embeds.detach().clone()
+        else:
+            return logits.float()
+
+    def process_embeds(
+        self, 
+        image_embeds, 
+        return_embeds: bool = False,
+    ):
+        logit_scale = self.clip_model.logit_scale.exp()
+        logits = logit_scale.float() * image_embeds.float() @ self.prompts_embeds.t().float()
+        if return_embeds:
             return logits.float(), image_embeds, self.prompts_embeds.detach().clone()
         else:
             return logits.float()
