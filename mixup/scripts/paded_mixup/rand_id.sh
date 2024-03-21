@@ -20,7 +20,7 @@ do
                     do
                         for p in 9
                         do
-                            for r in 7
+                            for r in 5
                             do
                                 if [ "$method" = "MixDiffEnergy" ] || [ "$method" = "MixDiffMaxLogitScore" ] && [ "$intermediate_state" = "softmax" ]; then
                                     echo "Skipping ${method} ${intermediate_state}"
