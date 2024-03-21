@@ -17,7 +17,7 @@ do
             do
                 for m in 15
                 do
-                    for p in 15
+                    for p in 14
                     do
                         for r in 7
                         do
@@ -35,7 +35,7 @@ do
                                 --seed 0 \
                                 --wandb_name '' \
                                 --wandb_project ZOC \
-                                --wandb_tags single_sample_v1 \
+                                --wandb_tags single_sample_v2 \
                                 --device 0 \
                                 --model_path 'ViT-B/32' \
                                 --max_samples null \

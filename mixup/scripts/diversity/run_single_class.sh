@@ -17,9 +17,9 @@ do
             do
                 for m in 15
                 do
-                    for p in 15
+                    for p in 9
                     do
-                        for r in 7
+                        for r in 5
                         do
                             if [ "$method" = "MixDiffEnergy" ] || [ "$method" = "MixDiffMaxLogitScore" ] && [ "$intermediate_state" = "softmax" ]; then
                                 echo "Skipping ${method} ${intermediate_state}"
@@ -35,7 +35,7 @@ do
                                 --seed 0 \
                                 --wandb_name '' \
                                 --wandb_project ZOC \
-                                --wandb_tags single_class_v1 \
+                                --wandb_tags single_class_v2 \
                                 --device 0 \
                                 --model_path 'ViT-B/32' \
                                 --max_samples null \
