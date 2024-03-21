@@ -6,3 +6,4 @@ from .cut_mixup import CutMixup
 from .concat_mixup import ConcatMixup
 from .interpolation_mixup import InterpolationMixup
 from .gaussian_noise import GaussianNoise
+from .paded_interpolation_mixup import PadedInterpolationMixup
