@@ -8,10 +8,10 @@ do
         for ratio in 0.146 0.25
         do
             for dataset in \
-                CIFARPlus50OODDataset \
                 CIFAR10OODDataset \
-                CIFARPlus50OODDataset \
                 CIFAR100OODDataset \
+                CIFARPlus50OODDataset \
+                CIFARPlus10OODDataset \
                 TinyImageNetOODDataset 
             do
                 for gamma in 2.0
@@ -34,9 +34,9 @@ do
                                     --gamma $gamma \
                                     --r_ref 0 \
                                     --seed 0 \
-                                    --wandb_name '' \
+                                    --wandb_name $ratio \
                                     --wandb_project ZOC \
-                                    --wandb_tags paded_mixup_v1 \
+                                    --wandb_tags paded_mixup_v2 \
                                     --device 0 \
                                     --model_path 'ViT-B/32' \
                                     --max_samples null \

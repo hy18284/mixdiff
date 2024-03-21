@@ -34,9 +34,9 @@ do
                                     --gamma $gamma \
                                     --r_ref 0 \
                                     --seed 0 \
-                                    --wandb_name '' \
+                                    --wandb_name $ratio \
                                     --wandb_project ZOC \
-                                    --wandb_tags paded_mixup_v1 \
+                                    --wandb_tags paded_mixup_v2 \
                                     --device 0 \
                                     --model_path 'ViT-B/32' \
                                     --max_samples null \
