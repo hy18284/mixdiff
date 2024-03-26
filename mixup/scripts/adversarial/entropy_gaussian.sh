@@ -8,7 +8,7 @@ do
             MixDiffEntropy
         do 
             for dataset in \
-                CIFAR100OODDataset
+                CIFAR10OODDataset
             do
                 for eps in 1
                 do
@@ -37,7 +37,7 @@ do
                                                 --r_ref 0 \
                                                 --seed 0 \
                                                 --wandb_name $attack \
-                                                --wandb_project ZOC_debug \
+                                                --wandb_project ZOC \
                                                 --wandb_tags adv \
                                                 --device 0 \
                                                 --ref_mode $ref_mode \
