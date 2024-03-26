@@ -8,7 +8,8 @@ do
             MixDiffEntropy
         do 
             for dataset in \
-                CIFAR10OODDataset
+                CIFAR10OODDataset \
+                CIFAR100OODDataset
             do
                 for eps in 1
                 do
