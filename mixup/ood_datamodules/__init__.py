@@ -7,6 +7,7 @@ from .caltech101_ood import Caltech101OODDataset
 from .class_split_ood import ClassSplitOODDataset
 from .imgnet_cross_ood import ImageNetCrossOODDataset
 from .cifar10_cross_ood import CIFAR10CrossOODDataset
+from .cifar10_ood_crorrupted import CorruptedCIFAR10OODDataset
 
 from .clinic150_ood import (
     CLINIC150OODDataset,
