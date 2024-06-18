@@ -513,8 +513,11 @@ if __name__ == '__main__':
 
                 if args.max_samples is not None and cur_num_samples >= args.max_samples:
                     break
-
-                probs_log += torch.softmax(image_kwargs['logits'], dim=-1).tolist()
+                
+                if score_calculator.intermediate_state == 'logit':
+                    probs_log += torch.softmax(image_kwargs['logits'], dim=-1).tolist()
+                if score_calculator.intermediate_state == 'softmax':
+                    probs_log += image_kwargs['logits'].tolist()
                 
             score_calculator.on_eval_end(iter_idx=iter_idx)
 
