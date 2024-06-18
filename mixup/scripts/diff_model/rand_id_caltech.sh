@@ -34,7 +34,7 @@ do
                                     --r_ref 0 \
                                     --seed 0 \
                                     --wandb_name $backbone \
-                                    --wandb_project ZOC_dev \
+                                    --wandb_project ZOC \
                                     --wandb_tags diff_model_v1 \
                                     --device 0 \
                                     --model_path $backbone \
