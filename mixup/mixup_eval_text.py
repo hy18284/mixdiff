@@ -82,6 +82,8 @@ def calculate_metrics(
     mixdiff_scores_log,
     targets,
     iter_idx,
+    labels,
+    pred_labels,
 ):
     targets, scores = targets[:args.max_samples], scores[:args.max_samples]
 
@@ -91,11 +93,11 @@ def calculate_metrics(
         mixdiff_scores_log = [-mixdiff_score for mixdiff_score in mixdiff_scores_log]
 
     table = wandb.Table(
-        columns=['id', 'ood_score','base_score', 'mixdiff_score', 'is_ood'],
+        columns=['id', 'ood_score','base_score', 'mixdiff_score', 'is_ood', 'label', 'pred_label'],
         data=[
-            (i, score, base_score, mixdiff_score, target)
-            for i, (score, base_score, mixdiff_score, target) 
-            in enumerate(zip(scores, base_scores_log, mixdiff_scores_log, targets))
+            (i, score, base_score, mixdiff_score, target, label, pred)
+            for i, (score, base_score, mixdiff_score, target, label, pred) 
+            in enumerate(zip(scores, base_scores_log, mixdiff_scores_log, targets, labels, pred_labels))
         ]
     )
     wandb.log({f'ood_scores_{iter_idx}': table})
@@ -108,12 +110,30 @@ def calculate_metrics(
     print(f'id_mean: {id_mean}')
     print(f'ood - id mean: {ood_mean - id_mean}')
 
+    acc = []
+
+    for probs_dict, label, target in zip(pred_labels, labels, targets):
+        if target == 1:
+            continue
+
+        max_val = float('-inf')
+        pred = None
+        for idx, prob in probs_dict.items():
+            if max_val < prob:
+                max_val = prob
+                pred = idx
+
+        if str(label) == pred:
+            acc.append(1)
+        else:
+            acc.append(0)
+    acc = sum(acc) / len(acc)
+        
     if not args.id_as_neg: 
         results = calculate_ood_metrics(np.array(id_scores), np.array(ood_scores))
         auroc = results['AUROC']
         fpr_at = results['FPR']
         fnr_at = 100.0
-
     else:
         auroc = roc_auc_score(targets, scores)
         fpr_at = calculate_fpr_at(scores, targets, args.fpr_at)
@@ -121,7 +141,7 @@ def calculate_metrics(
 
     print(f'auroc: {auroc}')
 
-    return auroc, fpr_at, fnr_at
+    return auroc, fpr_at, fnr_at, acc
 
 
 if __name__ == '__main__':
@@ -198,6 +218,7 @@ if __name__ == '__main__':
     aurocs = []
     fprs = []
     fnrs = []
+    acces = []
     known_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
     unknown_mixup_table = wandb.Table(['x', 'y', 'mixup', 'rate', 'split'])
     wandb.Table.MAX_ROWS = 200000
@@ -212,6 +233,8 @@ if __name__ == '__main__':
     base_scores_log_all = [] 
     mixdiff_scores_log_all = []
     targets_all = []
+    labels_log_all = []
+    probs_dicts_all = []
     
     if args.measure_time :
         latencies_per_sample = []
@@ -260,6 +283,8 @@ if __name__ == '__main__':
             scores = []
             mixdiff_scores_log = []
             base_scores_log = []
+            labels_log = []
+            probs_log = []
 
             mixup_fn.pre_transform = score_calculator.post_transform if args.trans_before_mixup else None
             mixup_fn.post_transform = score_calculator.post_transform if not args.trans_before_mixup else None
@@ -475,6 +500,7 @@ if __name__ == '__main__':
                 
                 targets += [int(label not in seen_idx) for label in labels][:orig_n_samples]
                 scores += dists.tolist()
+                labels_log += labels.tolist()
 
                 cur_num_samples += N
 
@@ -487,35 +513,50 @@ if __name__ == '__main__':
 
                 if args.max_samples is not None and cur_num_samples >= args.max_samples:
                     break
+
+                probs_log += torch.softmax(image_kwargs['logits'], dim=-1).tolist()
                 
             score_calculator.on_eval_end(iter_idx=iter_idx)
 
             if not score_calculator.utilize_mixup:
                 mixdiff_scores_log = itertools.repeat(0.0, len(scores))
             
+            probs_dicts = []
+            for probs in probs_log:
+                probs_dict = {}
+                for label, prob in zip(seen_idx, probs):
+                    probs_dict[str(label.item())] = prob
+                probs_dicts.append(probs_dict)
+            
             if datamodule.flatten:
                 scores_all += scores
                 base_scores_log_all += base_scores_log_all
                 mixdiff_scores_log_all += mixdiff_scores_log
                 targets_all += targets
+                labels_log_all += labels_log
+                probs_dicts_all += probs_dicts
             else:
-                auroc, fpr_at, fnr_at = calculate_metrics(
+                auroc, fpr_at, fnr_at, acc = calculate_metrics(
                     args,
                     scores,
                     base_scores_log,
                     mixdiff_scores_log,
                     targets,
                     iter_idx,
+                    labels_log,
+                    probs_dicts,
                 )
 
                 aurocs.append(auroc)
                 fprs.append(fpr_at)
                 fnrs.append(fnr_at)
+                acces.append(acc)
 
                 wandb.log({
                     'auroc': auroc,
                     f'fpr{args.fpr_at}': fpr_at,
                     f'fnr{args.fnr_at}': fnr_at,
+                    'acc': acc,
                 })
 
             iter_idx += 1
@@ -527,11 +568,14 @@ if __name__ == '__main__':
             base_scores_log_all,
             mixdiff_scores_log_all,
             targets_all,
-            iter_idx=0,
+            0,
+            labels_log_all,
+            probs_dicts_all,
         )
         aurocs.append(auroc)
         fprs.append(fpr_at)
         fnrs.append(fnr_at)
+        acces.append(acc)
     
     if args.log_interval is not None:
         if args.ref_mode == 'in_batch':
@@ -560,5 +604,7 @@ if __name__ == '__main__':
         f'fpr{round(args.fpr_at * 100)}_std': np.std(fprs),
         f'avg_fnr{round(args.fnr_at * 100)}': np.mean(fnrs), 
         f'fnr{round(args.fnr_at * 100)}_std': np.std(fnrs),
+        'avg_acc': np.mean(acces),
+        'acc_std': np.std(acces)
     })
 
