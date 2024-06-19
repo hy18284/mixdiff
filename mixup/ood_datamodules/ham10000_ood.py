@@ -95,9 +95,12 @@ class HAM10000OODDataset(BaseOODDataModule):
         self, 
         drop_last: bool = False,
         add_desc: bool = False,
+        num_known: int = 4,
     ):
         self.drop_last = drop_last
         self.add_desc = add_desc
+        self.num_known = num_known
+
         self.splits = [
             [
                 'actinic keratoses',
@@ -146,7 +149,6 @@ class HAM10000OODDataset(BaseOODDataModule):
             ],
         ]
 
-        self.num_known = 4
 
 
     def get_splits(
