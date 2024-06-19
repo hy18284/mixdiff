@@ -35,7 +35,7 @@ DX2LABEL = {
 }
 
 LABEL2NAME = {
-    0: 'Actinic keratoses',  
+    0: 'actinic keratoses',  
     1: 'basal cell carcinoma', 
     2: 'benign keratosis-like lesions',
     3: 'dermatofibroma',
@@ -45,13 +45,23 @@ LABEL2NAME = {
 }
 
 NAME2LABEL= {
-    'Actinic keratoses': 0,  
+    'actinic keratoses': 0,  
     'basal cell carcinoma': 1, 
     'benign keratosis-like lesions': 2,
     'dermatofibroma': 3,
     'melanocytic nevi': 4,
     'pyogenic granulomas and hemorrhage': 5,
     'melanoma': 6,
+}
+
+NAME2DESC= {
+    'actinic keratoses': 'Actinic keratoses appear as rough, scaly patches on sun-exposed areas of the skin. They can vary in color from skin-colored to reddish-brown and may feel rough and dry.',  
+    'basal cell carcinoma': 'Basal cell carcinoma typically presents as a pearly or waxy bump, often with visible blood vessels on the surface. It may also appear as a flat, flesh-colored or brown scar-like lesion.', 
+    'benign keratosis-like lesions': 'Benign keratosis-like lesions, such as seborrheic keratosis, are raised, waxy growths with a stuck-on appearance. They can vary in color from light tan to black and often have a rough texture.',
+    'dermatofibroma': 'Dermatofibromas are benign skin growths that appear as small, firm nodules or plaques. They are usually brownish in color and may have a dimpled or depressed center when pinched.',
+    'melanocytic nevi': 'Melanocytic nevi are benign growths composed of melanocytes (pigment-producing cells). They can vary in appearance from flat to raised, and in color from tan to dark brown.',
+    'pyogenic granulomas and hemorrhage': 'Pyogenic granulomas are red, often rapidly growing nodules that can bleed easily. They are not cancerous but can be mistaken for more serious conditions due to their appearance.',
+    'melanoma': 'Melanoma is a type of skin cancer that can develop from existing moles or appear as a new dark spot on the skin. It is characterized by asymmetry, irregular borders, uneven coloration, and a diameter larger than a pencil eraser (although not always).',
 }
 
 
@@ -84,11 +94,13 @@ class HAM10000OODDataset(BaseOODDataModule):
     def __init__(
         self, 
         drop_last: bool = False,
+        add_desc: bool = False,
     ):
         self.drop_last = drop_last
+        self.add_desc = add_desc
         self.splits = [
             [
-                'Actinic keratoses',
+                'actinic keratoses',
                 'melanocytic nevi',
                 'pyogenic granulomas and hemorrhage',
                 'basal cell carcinoma',
@@ -100,13 +112,13 @@ class HAM10000OODDataset(BaseOODDataModule):
                 'melanoma',
                 'melanocytic nevi',
                 'dermatofibroma',
-                'Actinic keratoses',
+                'actinic keratoses',
                 'pyogenic granulomas and hemorrhage',
                 'benign keratosis-like lesions',
                 'basal cell carcinoma'
             ],
             [
-                'Actinic keratoses',
+                'actinic keratoses',
                 'basal cell carcinoma',
                 'melanoma',
                 'pyogenic granulomas and hemorrhage',
@@ -121,11 +133,11 @@ class HAM10000OODDataset(BaseOODDataModule):
                 'melanoma',
                 'basal cell carcinoma',
                 'dermatofibroma',
-                'Actinic keratoses'
+                'actinic keratoses'
             ],
             [
                 'pyogenic granulomas and hemorrhage',
-                'Actinic keratoses',
+                'actinic keratoses',
                 'dermatofibroma',
                 'melanocytic nevi',
                 'basal cell carcinoma',
@@ -211,6 +223,8 @@ class HAM10000OODDataset(BaseOODDataModule):
             else:
                 raise ValueError()
 
+            if self.add_desc:
+                seen_class_names = [f'{name}. {NAME2DESC[name]}' for name in seen_class_names]
             yield seen_class_names, seen_class_idx, given_images, ref_images, None, loader, None
 
     def sample_given_images(
