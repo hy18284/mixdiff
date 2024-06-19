@@ -29,7 +29,7 @@ do
                                 --seed 0 \
                                 --wandb_name '' \
                                 --wandb_project ZOC \
-                                --wandb_tags ham_v1 \
+                                --wandb_tags ham_v2 \
                                 --device 0 \
                                 --model_path 'ViT-B/32' \
                                 --max_samples null \
