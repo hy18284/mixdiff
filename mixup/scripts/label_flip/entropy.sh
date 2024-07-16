@@ -13,7 +13,7 @@ do
             do
                 for eps in 1
                 do
-                for attack_nb_iter in 10
+                for attack_nb_iter in 1 5 25
                 do
                 for attack in label_flip
                 do

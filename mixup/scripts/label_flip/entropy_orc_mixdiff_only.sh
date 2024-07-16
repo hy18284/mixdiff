@@ -59,7 +59,7 @@ do
                                                 --score_calculator.init_args.oracle_sim_temp 1.0 \
                                                 --score_calculator.init_args.utilize_mixup true \
                                                 --score_calculator.init_args.selection_mode argmax \
-                                                --score_calculator.init_args.add_base_score true \
+                                                --score_calculator.init_args.add_base_score false \
                                                 --fnr_at 0.95 \
                                                 --fpr_at 0.95 \
                                                 --log_interval null \
