@@ -42,14 +42,6 @@ Place the datasets as below:
     * Run `tinyimagenet.sh` script in `data` directory.
 
 
-## Evaluate baselines
-
-Evaluate output-based baseline OOD scoring functions (MSP, MLS, etc.) on benchmark datasets.
-
-```bash
-bash mixup/scripts/baselines/baselines.sh
-```
-
 ## Experiments where model outputs are logits
 
 Evaluate MixDiff's peformance when the model outputs are logits.
@@ -98,6 +90,14 @@ Evaluate MixDiff's peformance when the model outputs are last layer activation.
 
 ```bash
 bash mixup/scripts/embed/mixdiff_embedding.sh
+```
+
+## Evaluate baselines
+
+Evaluate output-based baseline OOD scoring functions (MSP, MLS, etc.) on benchmark datasets.
+
+```bash
+bash mixup/scripts/baselines/baselines.sh
 ```
 
 ## Adversarial attack experiemnts
