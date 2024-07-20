@@ -1,0 +1,42 @@
+train_dataset:
+  class_path: text_classification.top_datamodule.Top
+  init_args:
+    mode: train
+    path: data/top/top-dataset-semantic-parsing
+    tokenizer_path: bert-base-uncased
+    beautify_intents: true
+    add_oos: false
+    oos_names:
+      - IN:GET_EVENT_ATTENDEE
+      - IN:UNINTELLIGIBLE
+      - IN:GET_EVENT_ORGANIZER
+      - IN:GET_EVENT_ATTENDEE_AMOUNT
+      - IN:UNSUPPORTED_NAVIGATION
+      - IN:UNSUPPORTED
+      - IN:UNSUPPORTED_EVENT
+
+eval_dataset:
+  class_path: text_classification.top_datamodule.Top
+  init_args:
+    mode: test
+    path: data/top/top-dataset-semantic-parsing
+    tokenizer_path: bert-base-uncased
+    beautify_intents: true
+    add_oos: true
+    oos_names:
+      - IN:GET_EVENT_ATTENDEE
+      - IN:UNINTELLIGIBLE
+      - IN:GET_EVENT_ORGANIZER
+      - IN:GET_EVENT_ATTENDEE_AMOUNT
+      - IN:UNSUPPORTED_NAVIGATION
+      - IN:UNSUPPORTED
+      - IN:UNSUPPORTED_EVENT
+
+test_seeds:  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+test_id_ratios: [0.50]
+
+ood_labels: []
+mode: test
+
+model_path: checkpoints/top_cs/ts_{}_tr_{}
+name: cs_t50_top
