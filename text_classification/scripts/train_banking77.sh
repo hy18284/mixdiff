@@ -17,7 +17,7 @@ do
 
         for val_seed in 0
         do
-            for val_id_ratio in 0.5 0.75
+            for val_id_ratio in 0.25 0.5 0.75
             do
                 val_n_labels=$(printf "%.0f"  $(echo  "$test_n_labels * $val_id_ratio" | bc))
                 echo "# of val labels: $val_n_labels"
