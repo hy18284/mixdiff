@@ -42,7 +42,7 @@ Place the datasets as below:
     * Run `tinyimagenet.sh` script in `data` directory.
 
 
-## Run baselines
+## Evaluate baselines
 
 Evaluate output-based baseline OOD scoring functions (MSP, MLS, etc.) on benchmark datasets.
 
@@ -93,6 +93,8 @@ bash mixup/scripts/label/onehot_agmax_rnd_id.sh
 ```
 
 ## Experiments where model outputs are last layer activations
+
+Evaluate MixDiff's peformance when the model outputs are last layer activation.
 
 ```bash
 bash mixup/scripts/embed/mixdiff_embedding.sh
