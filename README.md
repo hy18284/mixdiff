@@ -26,9 +26,6 @@ conda activate mixdiff
 
 Place the datasets as below:
 
-* `Caltech101`
-    * The dataset is automatically downloaded when the code is run.
-
 * `CIFAR10`
     * The dataset is automatically downloaded when the code is run.
 
@@ -50,7 +47,7 @@ Place the datasets as below:
 Evaluate output-based baseline OOD scoring functions (MSP, MLS, etc.) on benchmark datasets.
 
 ```bash
-bash mixup/scripts_official/baselines.sh
+bash mixup/scripts/baselines/baselines.sh
 ```
 
 ## Experiments where model outputs are logits
@@ -58,7 +55,7 @@ bash mixup/scripts_official/baselines.sh
 Evaluate MixDiff's peformance when the model outputs are logits.
 
 ```bash
-bash mixup/scripts_official/mixdiff_logit.sh
+bash mixup/scripts/logit/mixdiff_logit.sh
 ```
 
 ## Experiments where model outputs are predction probabilties
@@ -66,19 +63,19 @@ bash mixup/scripts_official/mixdiff_logit.sh
 Run the script below after replacing `OOD_METHOD` with one of the following names: `entropy`, `msp`.
 
 ```bash
-bash mixup/scripts/in_batch/run_{OOD_METHOD}_s_in_bat.sh
+bash mixup/scripts/prob/mixdiff_prob_{OOD_METHOD}.sh
 ```
 
 Evaluate the setup where oracle samples are used as auxiliary samples.
 
 ```bash
-bash mixup/scripts_official/entropy_orc_mixdiff.sh
+bash mixup/scripts/prob/mixdiff_entropy_orc.sh
 ```
 
 Evaluate the setup where random ID samples are used as auxiliary samples.
 
 ```bash
-bash mixup/scripts_official/entropy_rnd_id_mixdiff.sh
+bash mixup/scripts/prob/mixdiff_entropy_rnd_id.sh
 ```
 
 ## Experiments where model outputs are prediction labels
@@ -86,19 +83,19 @@ bash mixup/scripts_official/entropy_rnd_id_mixdiff.sh
 Evaluate using oracle samples as auxiliary samples.
 
 ```bash
-bash mixup/scripts_official/onehot_agmax_orc.sh
+bash mixup/scripts/label/onehot_agmax_orc.sh
 ```
 
 Evaluate using random ID samples as auxiliary samples.
 
 ```bash
-bash mixup/scripts_official/onehot_agmax_rnd_id.sh
+bash mixup/scripts/label/onehot_agmax_rnd_id.sh
 ```
 
 ## Experiments where model outputs are last layer activations
 
 ```bash
-bash mixup/scripts_official/mixdiff_embedding.sh
+bash mixup/scripts/embed/mixdiff_embedding.sh
 ```
 
 ## Adversarial attack experiemnts
@@ -106,25 +103,25 @@ bash mixup/scripts_official/mixdiff_embedding.sh
 Evaluate baseline under various adversarial attack scenarios.
 
 ```bash
-bash mixup/scripts_official/adv_attack/baselines.sh
+bash mixup/scripts/adv_attack/baselines.sh
 ```
 
 Evaluate *MixDiff+Entropy* under various adversarial attack scenarios.
 
 ```bash
-bash mixup/scripts_official/adv_attack/entropy_orc_mixdiff.sh
+bash mixup/scripts/adv_attack/entropy_orc_mixdiff.sh
 ```
 
 Evaluate *MixDiff only* under various adversarial attack scenarios.
 
 ```bash
-bash mixup/scripts_official/adv_attack/entropy_orc_mixdiff_only.sh
+bash mixup/scripts/adv_attack/entropy_orc_mixdiff_only.sh
 ```
 
 Evaluate *MixDiff only* on clean samples.
 
 ```bash
-bash mixup/scripts_official/adv_attack/entropy_orc_mixdiff_only_clean.sh
+bash mixup/scripts/adv_attack/entropy_orc_mixdiff_only_clean.sh
 ```
 
 
@@ -158,69 +155,16 @@ bash text_classification/scripts/train_{DATASET_NAME}.sh
 ### Hyperparameter search on validation splits
 
 ```bash
-bash mixup/scripts_text/cat_mixup_orcl/run_cs.sh
+bash mixup_text/scripts/run_val.sh
 ```
 
 ### Evaluation on test splits
 
 Run evaluation on the test split by selecting appropriate values in the script below.
 
+
 ```bash
-# Choose the OOD score function to evaluate.
-for method in \
-    MixDiffEntropyText \
-    MixDiffMaxSoftmaxProbText \
-    MixDiffEnergyText \
-    MixDiffMaxLogitScoreText 
-do 
-    # Choose the dataset from below.
-    for dataset in \
-        acid \
-        banking77 \
-        clinic150 \
-        snips \
-        top 
-    do
-        # Choose the position of the auxiliary sample in a mixed text.
-        for ref_pos in "both 2" "front 1" "rear 1"
-        do
-            # Choose the in-scope class ratio.
-            for id_rate in 75 50 25
-            do
-                # Choose the scaling hyperparameter gamma.
-                for gamma in 1.0 0.5 2.0
-                do
-                    # Choose the number of oracle samples per class.
-                    for m in 30 25 20 15 10 5
-                    do
-                        set -- $ref_pos
-                        python -m mixup.mixup_eval_text \
-                            --n 258 \
-                            --m $m \
-                            --r $2 \
-                            --gamma $gamma \
-                            --r_ref 0 \
-                            --seed 0 \
-                            --wandb_name '' \
-                            --wandb_project ZOC \
-                            --device 0 \
-                            --ref_mode oracle \
-                            --model_path checkpoints/${dataset}_bert \
-                            --score_calculator.class_path mixup.ood_score_calculators.$method \
-                            --score_calculator.init_args.batch_size 10000 \
-                            --score_calculator.init_args.selection_mode argmax \
-                            --fnr_at 0.95 \
-                            --fpr_at 0.95 \
-                            --datamodule.class_path mixup.ood_datamodules.ClassSplitOODDataset \
-                            --datamodule.init_args.config_path mixup/configs_text/${dataset}_cs_test_$id_rate.yml \
-                            --mixup_operator.class_path mixup.mixup_operators.ConcatMixup \
-                            --mixup_operator.init_args.ref_pos $1
-                    done
-                done
-            done
-        done
-    done
-done
+bash mixup_text/scripts/run_test.sh
 ```
 
 ### Run baselines
@@ -228,7 +172,7 @@ done
 Run MLS, MSP, Energy and entropy OOS detection baselines by using the script below.
 
 ```bash
-bash mixup/scripts_text/run_cs_baselines_test.sh
+bash mixup_text/scripts/run_baselines.sh
 ```
 
 ## Citation
