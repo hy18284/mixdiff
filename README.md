@@ -44,13 +44,13 @@ Place the datasets as below:
 
 ## Experiments where model outputs are logits
 
-Evaluate MixDiff's peformance when the model outputs are logits.
+Evaluate MixDiff's performance when the model outputs are logits.
 
 ```bash
 bash mixup/scripts/logit/mixdiff_logit.sh
 ```
 
-## Experiments where model outputs are predction probabilties
+## Experiments where model outputs are prediction probabilities
 
 Run the script below after replacing `OOD_METHOD` with one of the following names: `entropy`, `msp`.
 
@@ -86,7 +86,7 @@ bash mixup/scripts/label/onehot_agmax_rnd_id.sh
 
 ## Experiments where model outputs are last layer activations
 
-Evaluate MixDiff's peformance when the model outputs are last layer activation.
+Evaluate MixDiff's performance when the model outputs are last layer activation.
 
 ```bash
 bash mixup/scripts/embed/mixdiff_embedding.sh
@@ -100,7 +100,7 @@ Evaluate output-based baseline OOD scoring functions (MSP, MLS, etc.) on benchma
 bash mixup/scripts/baselines/baselines.sh
 ```
 
-## Adversarial attack experiemnts
+## Adversarial attack experiments
 
 Evaluate baseline under various adversarial attack scenarios.
 
@@ -185,4 +185,4 @@ TODO
 
 ## Acknowledgments
 
-We built our experiment pipeline from the codebase of [ZOC repository](https://github.com/sesmae/zoc). We thank the authors of *["Zero-Shot Out-of-Distribution Detection Based on the Pre-trained Model CLIP"](https://arxiv.org/pdf/2109.02748.pdf)* for sharing thier code.
+We built our experiment pipeline from the codebase of [ZOC repository](https://github.com/sesmae/zoc). We thank the authors of *["Zero-Shot Out-of-Distribution Detection Based on the Pre-trained Model CLIP"](https://arxiv.org/pdf/2109.02748.pdf)* for sharing their code.
