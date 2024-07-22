@@ -1,6 +1,6 @@
 # Perturb-and-compare Approach for Detecting Out-of-distribution Samples in Constrained Access Environments
 
-This repossitory contains code for the paper *Perturb-and-compare Approach for Detecting Out-of-distribution Samples in Constrained Access Environments* (ECAI 2024).
+This repossitory contains the code for the paper *Perturb-and-compare Approach for Detecting Out-of-distribution Samples in Constrained Access Environments* (ECAI 2024).
 
 ## Abstract
 <!-- ![overall figure](assets/motivation.png) -->
