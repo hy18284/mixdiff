@@ -1,0 +1,141 @@
+# pytorch_lightning==2.0.2
+seed_everything: 42
+trainer:
+  accelerator: gpu
+  strategy: auto
+  devices: auto
+  num_nodes: 1
+  precision: 32-true
+  logger:
+    class_path: pytorch_lightning.loggers.wandb.WandbLogger
+    init_args:
+      name: top_classifier
+      project: mixdiff
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.early_stopping.EarlyStopping
+      init_args:
+        monitor: 'val_loss'
+        patience: 0
+        mode: min
+        min_delta: 0.001
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        monitor: 'val_loss'
+        save_top_k: 1
+        mode: min
+  fast_dev_run: false
+  max_epochs: 10000000000
+  min_epochs: null
+  max_steps: 100000000000
+  min_steps: null
+  max_time: null
+  limit_train_batches: null
+  limit_val_batches: null
+  limit_test_batches: null
+  limit_predict_batches: null
+  overfit_batches: 0.0
+  val_check_interval: 100
+  check_val_every_n_epoch: null
+  num_sanity_val_steps: null
+  log_every_n_steps: 1
+  enable_checkpointing: null
+  enable_progress_bar: null
+  enable_model_summary: null
+  accumulate_grad_batches: 1
+  gradient_clip_val: null
+  gradient_clip_algorithm: null
+  deterministic: null
+  benchmark: null
+  inference_mode: true
+  use_distributed_sampler: true
+  profiler: null
+  detect_anomaly: false
+  barebones: false
+  plugins: null
+  sync_batchnorm: false
+  reload_dataloaders_every_n_epochs: 0
+  default_root_dir: null
+model:
+  num_labels: 12
+  model_path: bert-base-uncased
+  lr: 1.0e-05
+  checkpoint_path: checkpoints/top_cs
+data:
+  class_path: text_classification.class_split_datamodule.ClassSplitDataModule
+  init_args:
+
+    train_dataset:
+      class_path: text_classification.class_split_datamodule.ClassSplitWrapper
+      init_args:
+        class_split_seed: null
+        seen_class_ratio: null
+        ood_labels: []
+        val_ratio: null
+        val_split_seed: null
+        mode: null
+        dataset:
+          class_path: text_classification.top_datamodule.Top
+          init_args:
+            mode: train
+            path: 'data/top/top-dataset-semantic-parsing'
+            tokenizer_path: 'bert-base-uncased'
+            add_oos: false
+            beautify_intents: true
+            oos_names:
+              - IN:GET_EVENT_ATTENDEE
+              - IN:UNINTELLIGIBLE
+              - IN:GET_EVENT_ORGANIZER
+              - IN:GET_EVENT_ATTENDEE_AMOUNT
+              - IN:UNSUPPORTED_NAVIGATION
+              - IN:UNSUPPORTED
+              - IN:UNSUPPORTED_EVENT
+
+    val_dataset:
+      class_path: text_classification.class_split_datamodule.ClassSplitWrapper
+      init_args:
+        class_split_seed: null
+        seen_class_ratio: null
+        ood_labels: []
+        val_ratio: null
+        val_split_seed: null
+        mode: null
+        dataset:
+          class_path: text_classification.top_datamodule.Top
+          init_args:
+            mode: train
+            path: 'data/top/top-dataset-semantic-parsing'
+            tokenizer_path: 'bert-base-uncased'
+            add_oos: false
+            beautify_intents: true
+            oos_names:
+              - IN:GET_EVENT_ATTENDEE
+              - IN:UNINTELLIGIBLE
+              - IN:GET_EVENT_ORGANIZER
+              - IN:GET_EVENT_ATTENDEE_AMOUNT
+              - IN:UNSUPPORTED_NAVIGATION
+              - IN:UNSUPPORTED
+              - IN:UNSUPPORTED_EVENT
+
+    test_dataset:
+      class_path: text_classification.top_datamodule.Top
+      init_args:
+        mode: val
+        path: 'data/top/top-dataset-semantic-parsing'
+        tokenizer_path: 'bert-base-uncased'
+        add_oos: false
+        beautify_intents: true
+        oos_names:
+          - IN:GET_EVENT_ATTENDEE
+          - IN:UNINTELLIGIBLE
+          - IN:GET_EVENT_ORGANIZER
+          - IN:GET_EVENT_ATTENDEE_AMOUNT
+          - IN:UNSUPPORTED_NAVIGATION
+          - IN:UNSUPPORTED
+          - IN:UNSUPPORTED_EVENT
+
+    class_split_seed: null
+    seen_class_ratio: null
+    ood_labels: []
+    batch_size: 128
+    val_ratio: 0.1
+    val_split_seed: 42

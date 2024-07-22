@@ -1,0 +1,26 @@
+import torch
+
+from .ood_score_calculator import OODScoreCalculator
+from .mixdiff_entropy import MixDiffEntropy
+
+
+class MixDotEntropy(
+    MixDiffEntropy,
+    OODScoreCalculator,
+):
+    name = 'entropy'
+    @torch.no_grad()
+    def calculate_diff(
+        self,
+        known_logits,
+        unknown_logits,
+    ):
+        known_probs = self._process_logits(known_logits)
+        unknown_probs = self._process_logits(unknown_logits)
+        mixsim = -(known_probs * unknown_probs).sum(-1)
+
+        return mixsim
+
+    def __str__(self) -> str:
+        # TODO: May not be the greatest way to handle this.
+        return super().__str__().replace('mixdiff', 'mixdot')

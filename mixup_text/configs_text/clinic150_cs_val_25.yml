@@ -1,0 +1,43 @@
+train_dataset:
+  class_path: text_classification.class_split_datamodule.ClassSplitWrapper
+  init_args:
+    class_split_seed: null
+    seen_class_ratio: null
+    ood_labels: []
+    val_ratio: null
+    val_split_seed: null
+    mode: null
+    dataset:
+      class_path: text_classification.clinic150_datamodule.CLINIC150
+      init_args:
+        mode: train
+        path: data/clinc150/
+        tokenizer_path: 'bert-base-uncased'
+        add_oos: false
+        oos_only: false
+        wiki_for_test: false
+        beautify_intents: true
+
+eval_dataset:
+  class_path: text_classification.clinic150_datamodule.CLINIC150
+  init_args:
+    mode: val
+    path: data/clinc150/
+    tokenizer_path: 'bert-base-uncased'
+    add_oos: false
+    oos_only: false
+    wiki_for_test: false
+    beautify_intents: true
+
+test_seeds:  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+test_id_ratios: [0.25]
+val_seeds: [0]
+val_id_ratios: [0.25, 0.5, 0.75]
+
+val_ratio: 0.1
+val_split_seed: 42
+ood_labels: []
+mode: val
+
+model_path: checkpoints/clinic150_cs/ts_{}_tr_{}_vs_{}_vr_{}
+name: cs_v25_clinic

@@ -1,0 +1,17 @@
+/wandb
+/data
+*/__pycache__/*
+*.pyc
+/results
+/trained_models
+/CLIP
+/charts
+*.xlsx
+/checkpoints
+/ZOC
+/ZOC_debug
+.hypothesis
+/config.yaml
+/scripts
+anaconda3
+/mixdiff
