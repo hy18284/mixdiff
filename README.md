@@ -180,7 +180,36 @@ bash mixup_text/scripts/run_baselines.sh
 ## Citation
 
 ```bibtex
-TODO
+@inproceedings{DBLP:conf/ecai/LeeBOBS24,
+  author       = {Heeyoung Lee and
+                  Hoyoon Byun and
+                  Changdae Oh and
+                  JinYeong Bak and
+                  Kyungwoo Song},
+  editor       = {Ulle Endriss and
+                  Francisco S. Melo and
+                  Kerstin Bach and
+                  Alberto Jos{\'{e}} Bugar{\'{\i}}n Diz and
+                  Jose Maria Alonso{-}Moral and
+                  Sen{\'{e}}n Barro and
+                  Fredrik Heintz},
+  title        = {Perturb-and-Compare Approach for Detecting Out-of-Distribution Samples
+                  in Constrained Access Environments},
+  booktitle    = {{ECAI} 2024 - 27th European Conference on Artificial Intelligence,
+                  19-24 October 2024, Santiago de Compostela, Spain - Including 13th
+                  Conference on Prestigious Applications of Intelligent Systems {(PAIS}
+                  2024)},
+  series       = {Frontiers in Artificial Intelligence and Applications},
+  volume       = {392},
+  pages        = {2066--2073},
+  publisher    = {{IOS} Press},
+  year         = {2024},
+  url          = {https://doi.org/10.3233/FAIA240724},
+  doi          = {10.3233/FAIA240724},
+  timestamp    = {Fri, 25 Oct 2024 12:13:46 +0200},
+  biburl       = {https://dblp.org/rec/conf/ecai/LeeBOBS24.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
 ```
 
 ## Acknowledgments
